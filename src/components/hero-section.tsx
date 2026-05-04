@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useAudioStore, getSurahInfo } from '@/lib/audio-store';
+import { useAudioStore } from '@/lib/audio-store';
 import { AUDIO_QUALITIES, RECITERS } from '@/lib/quran-data';
 
 export default function HeroSection() {
