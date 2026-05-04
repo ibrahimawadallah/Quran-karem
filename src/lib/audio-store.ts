@@ -16,6 +16,12 @@ interface AudioState {
   currentReciter: string;
   isBuffering: boolean;
 
+  // Surah-level timing (stored in Zustand to avoid setState in effects)
+  accumulatedTime: number;
+  currentAyahTime: number;
+  currentAyahDuration: number;
+  ayahDurations: number[];
+
   // UI state - main page
   searchQuery: string;
   revelationFilter: RevelationFilter;
@@ -51,6 +57,14 @@ interface AudioState {
   playPrevious: () => void;
   togglePlay: () => void;
 
+  // Timing actions
+  setCurrentAyahTime: (time: number) => void;
+  setCurrentAyahDuration: (duration: number) => void;
+  addAyahDuration: (ayahIndex: number, duration: number) => void;
+  advanceToNextAyah: () => void;
+  seekToAyah: (ayahNumber: number) => void;
+  resetTiming: () => void;
+
   // Player visibility
   showPlayer: () => void;
   hidePlayer: () => void;
@@ -61,6 +75,11 @@ interface AudioState {
   openReadingModal: (surah: Surah) => void;
   closeReadingModal: () => void;
   readingModalSurah: Surah | null;
+
+  // UI filter actions
+  setSearchQuery: (query: string) => void;
+  setRevelationFilter: (filter: RevelationFilter) => void;
+  setViewMode: (mode: ViewMode) => void;
 
   // Reciter panel
   setShowReciterPanel: (show: boolean) => void;
@@ -96,6 +115,12 @@ export const useAudioStore = create<AudioState>((set, get) => {
     audioQuality: AUDIO_QUALITIES[1].value, // 128 kbps default
     currentReciter: RECITERS[0].id, // Mishary Alafasy default
     isBuffering: false,
+
+    // Surah-level timing
+    accumulatedTime: 0,
+    currentAyahTime: 0,
+    currentAyahDuration: 0,
+    ayahDurations: [],
 
     // UI state - main page
     searchQuery: "",
@@ -140,6 +165,10 @@ export const useAudioStore = create<AudioState>((set, get) => {
         isPlaying: true,
         isPlayerVisible: true,
         isBuffering: false,
+        accumulatedTime: 0,
+        currentAyahTime: 0,
+        currentAyahDuration: 0,
+        ayahDurations: [],
       });
     },
 
@@ -151,6 +180,10 @@ export const useAudioStore = create<AudioState>((set, get) => {
         isPlaying: true,
         isPlayerVisible: true,
         isBuffering: false,
+        accumulatedTime: 0,
+        currentAyahTime: 0,
+        currentAyahDuration: 0,
+        ayahDurations: [],
       });
     },
 
@@ -159,7 +192,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
     pauseAudio: () => set({ isPlaying: false }),
     resumeAudio: () => set({ isPlaying: true }),
 
-    setCurrentAyahInSurah: (ayah) => set({ currentAyahInSurah: ayah }),
+    setCurrentAyahInSurah: (ayah) => set({ currentAyahInSurah: ayah, currentAyahTime: 0, currentAyahDuration: 0 }),
 
     setVolume: (vol) => set({ volume: vol }),
     setAudioQuality: (quality) => set({ audioQuality: quality }),
@@ -184,6 +217,10 @@ export const useAudioStore = create<AudioState>((set, get) => {
         currentAyahInSurah: 1,
         totalAyahsInSurah: surahInfo.ayahCount,
         isPlaying: true,
+        accumulatedTime: 0,
+        currentAyahTime: 0,
+        currentAyahDuration: 0,
+        ayahDurations: [],
       });
     },
 
@@ -198,6 +235,10 @@ export const useAudioStore = create<AudioState>((set, get) => {
         currentAyahInSurah: 1,
         totalAyahsInSurah: surahInfo.ayahCount,
         isPlaying: true,
+        accumulatedTime: 0,
+        currentAyahTime: 0,
+        currentAyahDuration: 0,
+        ayahDurations: [],
       });
     },
 
@@ -214,6 +255,10 @@ export const useAudioStore = create<AudioState>((set, get) => {
             currentAyahInSurah: 1,
             totalAyahsInSurah: nextSurah.ayahCount,
             isBuffering: false,
+            accumulatedTime: 0,
+            currentAyahTime: 0,
+            currentAyahDuration: 0,
+            ayahDurations: [],
           });
         }
       }
@@ -232,6 +277,10 @@ export const useAudioStore = create<AudioState>((set, get) => {
             currentAyahInSurah: 1,
             totalAyahsInSurah: prevSurah.ayahCount,
             isBuffering: false,
+            accumulatedTime: 0,
+            currentAyahTime: 0,
+            currentAyahDuration: 0,
+            ayahDurations: [],
           });
         }
       }
@@ -241,6 +290,74 @@ export const useAudioStore = create<AudioState>((set, get) => {
       const { isPlaying } = get();
       set({ isPlaying: !isPlaying });
     },
+
+    // Timing actions
+    setCurrentAyahTime: (time) => set({ currentAyahTime: time }),
+
+    setCurrentAyahDuration: (duration) => set({ currentAyahDuration: duration }),
+
+    addAyahDuration: (ayahIndex, duration) => {
+      const { ayahDurations } = get();
+      const newDurations = [...ayahDurations];
+      newDurations[ayahIndex] = duration;
+      set({ ayahDurations: newDurations });
+    },
+
+    advanceToNextAyah: () => {
+      const { currentAyahInSurah, totalAyahsInSurah, ayahDurations, accumulatedTime } = get();
+      // Add the finished ayah's duration to accumulated time
+      const finishedDuration = ayahDurations[currentAyahInSurah - 1] || 0;
+      const newAccumulated = accumulatedTime + finishedDuration;
+
+      if (currentAyahInSurah < totalAyahsInSurah) {
+        set({
+          currentAyahInSurah: currentAyahInSurah + 1,
+          accumulatedTime: newAccumulated,
+          currentAyahTime: 0,
+          currentAyahDuration: 0,
+        });
+      } else {
+        // All ayahs done - go to next surah
+        const { currentSurah } = get();
+        const currentNum = currentSurah?.number ?? 0;
+        const nextNum = currentNum >= 114 ? 1 : currentNum + 1;
+        const surahInfo = getSurahInfo(nextNum);
+        if (surahInfo) {
+          set({
+            currentSurah: surahInfo,
+            currentAyahInSurah: 1,
+            totalAyahsInSurah: surahInfo.ayahCount,
+            isPlaying: true,
+            accumulatedTime: 0,
+            currentAyahTime: 0,
+            currentAyahDuration: 0,
+            ayahDurations: [],
+          });
+        }
+      }
+    },
+
+    seekToAyah: (ayahNumber) => {
+      const { ayahDurations } = get();
+      // Recalculate accumulated time up to the target ayah
+      let newAccumulated = 0;
+      for (let i = 0; i < ayahNumber - 1; i++) {
+        newAccumulated += ayahDurations[i] || 0;
+      }
+      set({
+        currentAyahInSurah: ayahNumber,
+        accumulatedTime: newAccumulated,
+        currentAyahTime: 0,
+        currentAyahDuration: 0,
+      });
+    },
+
+    resetTiming: () => set({
+      accumulatedTime: 0,
+      currentAyahTime: 0,
+      currentAyahDuration: 0,
+      ayahDurations: [],
+    }),
 
     // Player visibility
     showPlayer: () => set({ isPlayerVisible: true }),
@@ -258,6 +375,11 @@ export const useAudioStore = create<AudioState>((set, get) => {
     closeReadingModal: () =>
       set({ showSurahModal: false, readingModalSurah: null }),
     readingModalSurah: null,
+
+    // UI filter actions
+    setSearchQuery: (query) => set({ searchQuery: query }),
+    setRevelationFilter: (filter) => set({ revelationFilter: filter }),
+    setViewMode: (mode) => set({ viewMode: mode }),
 
     // Reciter panel
     setShowReciterPanel: (show) => set({ showReciterPanel: show }),

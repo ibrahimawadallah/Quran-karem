@@ -27,3 +27,32 @@ Stage Summary:
 - Search, filter (Meccan/Medinan), list/grid view modes
 - Audio player with auto-advance, keyboard shortcuts, volume control
 - Responsive design with glassmorphism effects
+
+---
+Task ID: 2
+Agent: Main Orchestrator
+Task: Fix audio not playing as one continuous track + header error
+
+Work Log:
+- Investigated current audio implementation: ayah-by-ayah playback with gaps between verses
+- Identified root cause of "header error": missing setSearchQuery, setRevelationFilter, setViewMode methods in Zustand store (FilterBar component near top of page was calling undefined methods)
+- Added missing setter methods to audio-store.ts interface and implementation
+- Moved timing state (accumulatedTime, currentAyahTime, currentAyahDuration, ayahDurations) from component local state to Zustand store to avoid React 19 lint errors about setState in effects
+- Added timing actions to store: setCurrentAyahTime, setCurrentAyahDuration, addAyahDuration, advanceToNextAyah, seekToAyah, resetTiming
+- Rewrote audio-player.tsx with:
+  - Surah-level progress bar showing progress across all ayahs (not just current ayah)
+  - Smooth progress calculation: (completed ayahs + fraction of current ayah) / total ayahs
+  - Preloading of next ayah audio for seamless transitions
+  - Ayah markers on progress bar for short surahs (≤30 ayahs)
+  - Click-to-seek on progress bar jumps to specific ayah positions
+  - Accumulated time tracking across ayahs for accurate time display
+  - Total surah time display (accumulated + current ayah duration)
+- All store actions (play, nextSurah, prevSurah) properly reset timing state
+- Lint check passes: 0 errors, 1 expected warning (font in layout.tsx)
+- App compiles and serves 200 OK
+
+Stage Summary:
+- Audio now plays seamlessly ayah-by-ayah with preloading for gapless transitions
+- Surah-level progress bar replaces per-ayah progress
+- Header error fixed by adding missing store methods for filter bar
+- Timing state moved to Zustand store to comply with React 19 strict mode

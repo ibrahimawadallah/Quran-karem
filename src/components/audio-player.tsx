@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useCallback } from "react";
 import {
   Play,
   Pause,
@@ -49,8 +49,8 @@ function AudioWave({ isPlaying }: { isPlaying: boolean }) {
 
 export default function AudioPlayer() {
   const audioRef = useRef<HTMLAudioElement>(null);
-  const progressRef = useRef<HTMLDivElement>(null);
-  const prevUrlRef = useRef("");
+  const nextAudioRef = useRef<HTMLAudioElement | null>(null);
+  const advancingRef = useRef(false);
 
   const {
     isPlayerVisible,
@@ -59,7 +59,6 @@ export default function AudioPlayer() {
     setIsPlaying,
     currentSurah,
     currentAyahInSurah,
-    setCurrentAyahInSurah,
     totalAyahsInSurah,
     nextSurah,
     prevSurah,
@@ -68,26 +67,48 @@ export default function AudioPlayer() {
     audioQuality,
     setIsBuffering,
     isBuffering,
+    // Timing state from store
+    accumulatedTime,
+    currentAyahTime,
+    currentAyahDuration,
+    // Timing actions from store
+    setCurrentAyahTime,
+    setCurrentAyahDuration,
+    addAyahDuration,
+    advanceToNextAyah,
+    seekToAyah,
   } = useAudioStore();
 
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(0.8);
-  const [isMuted, setIsMuted] = useState(false);
+  // Local volume state (doesn't need to be in store)
+  const [volume, setVolume] = React.useState(0.8);
+  const [isMuted, setIsMuted] = React.useState(false);
 
-  // Compute the audio URL for the current ayah
   const surahNum = currentSurah?.number ?? 1;
-  const absoluteAyah = getStartingAyahNumber(surahNum) + currentAyahInSurah - 1;
-  const audioUrl = `https://cdn.islamic.network/quran/audio/${audioQuality}/${currentReciter}/${absoluteAyah}.mp3`;
 
-  // Effect: update audio source when URL changes
+  /** Build the audio URL for a given ayah number */
+  const getAudioUrl = useCallback(
+    (ayahInSurah: number) => {
+      const absoluteAyah =
+        getStartingAyahNumber(surahNum) + ayahInSurah - 1;
+      return `https://cdn.islamic.network/quran/audio/${audioQuality}/${currentReciter}/${absoluteAyah}.mp3`;
+    },
+    [surahNum, audioQuality, currentReciter]
+  );
+
+  // Total surah time estimate (sum of known ayah durations + current)
+  const totalSurahTime = accumulatedTime + currentAyahDuration;
+  // Current position in the surah
+  const surahPosition = accumulatedTime + currentAyahTime;
+
+  // Main effect: load and play audio when ayah changes
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio) return;
-    if (prevUrlRef.current === audioUrl) return;
-    prevUrlRef.current = audioUrl;
+    if (!audio || !currentSurah) return;
 
-    audio.src = audioUrl;
+    advancingRef.current = false;
+
+    const url = getAudioUrl(currentAyahInSurah);
+    audio.src = url;
     audio.load();
 
     if (isPlaying) {
@@ -95,7 +116,18 @@ export default function AudioPlayer() {
         // Autoplay may be blocked
       });
     }
-  }, [audioUrl, isPlaying]);
+
+    // Preload next ayah for seamless transition
+    if (currentAyahInSurah < totalAyahsInSurah) {
+      const nextUrl = getAudioUrl(currentAyahInSurah + 1);
+      if (!nextAudioRef.current) {
+        nextAudioRef.current = new Audio();
+      }
+      nextAudioRef.current.src = nextUrl;
+      nextAudioRef.current.preload = "auto";
+      nextAudioRef.current.load();
+    }
+  }, [currentAyahInSurah, surahNum, getAudioUrl, isPlaying, currentSurah, totalAyahsInSurah]);
 
   // Effect: play/pause based on store state
   useEffect(() => {
@@ -114,36 +146,45 @@ export default function AudioPlayer() {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const onTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const onTimeUpdate = () => {
+      setCurrentAyahTime(audio.currentTime);
+    };
+
     const onDurationChange = () => {
-      if (isFinite(audio.duration)) {
-        setDuration(audio.duration);
+      if (isFinite(audio.duration) && audio.duration > 0) {
+        setCurrentAyahDuration(audio.duration);
+        // Store duration for this ayah index
+        const state = useAudioStore.getState();
+        const idx = state.currentAyahInSurah - 1;
+        if (idx >= 0) {
+          addAyahDuration(idx, audio.duration);
+        }
       }
     };
-    const onCanPlay = () => setIsBuffering(false);
-    const onWaiting = () => setIsBuffering(true);
+
+    const onCanPlay = () => {
+      setIsBuffering(false);
+    };
+
+    const onWaiting = () => {
+      setIsBuffering(true);
+    };
+
     const onPlaying = () => {
       setIsBuffering(false);
       setIsPlaying(true);
     };
+
     const onEnded = () => {
-      // Auto-advance to next ayah in surah
-      const state = useAudioStore.getState();
-      if (state.currentAyahInSurah < state.totalAyahsInSurah) {
-        setCurrentAyahInSurah(state.currentAyahInSurah + 1);
-      } else {
-        // All ayahs done, go to next surah
-        nextSurah();
-      }
+      if (advancingRef.current) return;
+      advancingRef.current = true;
+      advanceToNextAyah();
     };
+
     const onError = () => {
-      // Skip to next ayah on error
-      const state = useAudioStore.getState();
-      if (state.currentAyahInSurah < state.totalAyahsInSurah) {
-        setCurrentAyahInSurah(state.currentAyahInSurah + 1);
-      } else {
-        nextSurah();
-      }
+      if (advancingRef.current) return;
+      advancingRef.current = true;
+      advanceToNextAyah();
     };
 
     audio.addEventListener("timeupdate", onTimeUpdate);
@@ -163,13 +204,16 @@ export default function AudioPlayer() {
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("error", onError);
     };
-  }, [nextSurah, setCurrentAyahInSurah, setIsBuffering, setIsPlaying]);
+  }, [setIsBuffering, setIsPlaying, setCurrentAyahTime, setCurrentAyahDuration, addAyahDuration, advanceToNextAyah]);
 
   // Effect: apply volume and mute
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     audio.volume = isMuted ? 0 : volume;
+    if (nextAudioRef.current) {
+      nextAudioRef.current.volume = isMuted ? 0 : volume;
+    }
   }, [volume, isMuted]);
 
   // Keyboard shortcuts
@@ -206,21 +250,30 @@ export default function AudioPlayer() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isPlayerVisible, currentSurah, togglePlay, prevSurah, nextSurah, hidePlayer]);
 
-  /** Click on progress bar to seek */
+  /** Click on progress bar to seek to an ayah position */
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const audio = audioRef.current;
-    const bar = progressRef.current;
-    if (!audio || !bar || !duration) return;
+    const bar = e.currentTarget;
+    if (!currentSurah) return;
 
     const rect = bar.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const ratio = Math.max(0, Math.min(1, clickX / rect.width));
-    audio.currentTime = ratio * duration;
+
+    // Determine which ayah to jump to based on ratio
+    const targetAyah = Math.max(1, Math.ceil(ratio * totalAyahsInSurah));
+    seekToAyah(targetAyah);
   };
 
   if (!isPlayerVisible || !currentSurah) return null;
 
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+  // Surah-level progress (smooth, showing fraction within current ayah)
+  const surahProgressPercent =
+    totalAyahsInSurah > 0
+      ? ((currentAyahInSurah - 1 +
+          (currentAyahDuration > 0 ? currentAyahTime / currentAyahDuration : 0)) /
+          totalAyahsInSurah) *
+        100
+      : 0;
 
   return (
     <>
@@ -235,21 +288,35 @@ export default function AudioPlayer() {
           WebkitBackdropFilter: "blur(20px)",
         }}
       >
-        {/* Progress bar (thin, clickable) */}
+        {/* Progress bar - surah level */}
         <div
-          ref={progressRef}
-          className="w-full h-1 cursor-pointer group relative"
+          className="w-full h-1.5 cursor-pointer group relative"
           onClick={handleProgressClick}
           style={{ background: "rgba(139, 92, 246, 0.15)" }}
         >
           <div
             className="absolute top-0 left-0 h-full bg-gradient-to-r from-amber-400 to-amber-600 transition-all duration-200"
-            style={{ width: `${progressPercent}%` }}
+            style={{ width: `${Math.min(100, surahProgressPercent)}%` }}
           />
           <div
             className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-amber-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg shadow-amber-400/50"
-            style={{ left: `${progressPercent}%`, marginLeft: "-6px" }}
+            style={{
+              left: `${Math.min(100, surahProgressPercent)}%`,
+              marginLeft: "-6px",
+            }}
           />
+
+          {/* Ayah markers on progress bar for short surahs */}
+          {totalAyahsInSurah <= 30 &&
+            Array.from({ length: totalAyahsInSurah - 1 }, (_, i) => (
+              <div
+                key={i}
+                className="absolute top-0 h-full w-px bg-purple-500/30"
+                style={{
+                  left: `${((i + 1) / totalAyahsInSurah) * 100}%`,
+                }}
+              />
+            ))}
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4 px-3 sm:px-6 py-3 max-w-screen-xl mx-auto">
@@ -271,6 +338,13 @@ export default function AudioPlayer() {
               </div>
               <div className="text-[11px] text-muted-foreground tabular-nums">
                 Ayah {currentAyahInSurah} / {totalAyahsInSurah}
+                {totalSurahTime > 0 && (
+                  <span className="hidden sm:inline">
+                    {" "}
+                    &middot; {formatTime(surahPosition)} /{" "}
+                    {formatTime(totalSurahTime)}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -315,13 +389,8 @@ export default function AudioPlayer() {
             </button>
           </div>
 
-          {/* Right: Time + Volume + Close */}
+          {/* Right: Volume + Close */}
           <div className="flex items-center gap-2 sm:gap-3 flex-1 justify-end">
-            {/* Time display */}
-            <div className="text-[11px] text-muted-foreground hidden sm:block tabular-nums whitespace-nowrap">
-              {formatTime(currentTime)} / {formatTime(duration)}
-            </div>
-
             {/* Volume */}
             <div className="hidden md:flex items-center gap-2">
               <button
