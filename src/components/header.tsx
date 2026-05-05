@@ -14,6 +14,9 @@ import {
   MessageSquare,
   ExternalLink,
   Globe,
+  Crown,
+  Megaphone,
+  Search,
 } from "lucide-react";
 import {
   Dialog,
@@ -127,6 +130,93 @@ function AboutModal({
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Team */}
+          <div className="space-y-3 pt-2 border-t border-white/10">
+            <h4 className="text-white text-sm font-semibold flex items-center gap-2">
+              <Shield className="w-4 h-4 text-amber-400" />
+              Our Team
+            </h4>
+            <div className="space-y-2">
+              {[
+                {
+                  icon: Crown,
+                  name: "Hassan",
+                  nameAr: "حَسَن",
+                  role: "CEO",
+                  desc: "Chief Executive Officer",
+                  color: "amber",
+                },
+                {
+                  icon: Megaphone,
+                  name: "Marketing",
+                  nameAr: "التسويق",
+                  role: "Marketing",
+                  desc: "Brand & Outreach",
+                  color: "purple",
+                },
+                {
+                  icon: Search,
+                  name: "Seyworts",
+                  nameAr: "سيوورتس",
+                  role: "SEO",
+                  desc: "Search Engine Optimization",
+                  color: "emerald",
+                },
+              ].map((member, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 p-3 rounded-xl border border-purple-500/20 bg-white/5"
+                >
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                      member.color === "amber"
+                        ? "bg-amber-500/15"
+                        : member.color === "purple"
+                        ? "bg-purple-500/15"
+                        : "bg-emerald-500/15"
+                    }`}
+                  >
+                    <member.icon
+                      className={`w-5 h-5 ${
+                        member.color === "amber"
+                          ? "text-amber-400"
+                          : member.color === "purple"
+                          ? "text-purple-400"
+                          : "text-emerald-400"
+                      }`}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-white text-sm font-semibold">{member.name}</p>
+                      <span
+                        className="arabic-name text-xs text-amber-400/70"
+                        style={{ direction: "rtl" }}
+                      >
+                        {member.nameAr}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span
+                        className={`text-[11px] font-medium ${
+                          member.color === "amber"
+                            ? "text-amber-400"
+                            : member.color === "purple"
+                            ? "text-purple-400"
+                            : "text-emerald-400"
+                        }`}
+                      >
+                        {member.role}
+                      </span>
+                      <span className="text-gray-600 text-[10px]">•</span>
+                      <span className="text-gray-500 text-[11px]">{member.desc}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Contact & Suggestions */}
