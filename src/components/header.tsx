@@ -160,8 +160,8 @@ function AboutModal({
                   icon: Search,
                   name: "Seyworts",
                   nameAr: "سيوورتس",
-                  role: "SEO",
-                  desc: "Search Engine Optimization",
+                  role: "Keywords",
+                  desc: "Search & Keyword Strategy",
                   color: "emerald",
                 },
               ].map((member, i) => (
