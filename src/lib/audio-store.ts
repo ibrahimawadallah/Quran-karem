@@ -310,11 +310,18 @@ export const useAudioStore = create<AudioState>((set, get) => {
       const newAccumulated = accumulatedTime + finishedDuration;
 
       if (currentAyahInSurah < totalAyahsInSurah) {
+        // Estimate next ayah duration from average of known durations to prevent
+        // the progress bar from freezing/resetting during transition
+        const knownDurations = ayahDurations.filter((d: number) => d > 0);
+        const estimatedDuration = knownDurations.length > 0
+          ? knownDurations.reduce((a: number, b: number) => a + b, 0) / knownDurations.length
+          : 10; // fallback estimate in seconds
+
         set({
           currentAyahInSurah: currentAyahInSurah + 1,
           accumulatedTime: newAccumulated,
           currentAyahTime: 0,
-          currentAyahDuration: 0,
+          currentAyahDuration: estimatedDuration, // Estimate instead of 0!
         });
       } else {
         // All ayahs done - go to next surah
@@ -344,11 +351,18 @@ export const useAudioStore = create<AudioState>((set, get) => {
       for (let i = 0; i < ayahNumber - 1; i++) {
         newAccumulated += ayahDurations[i] || 0;
       }
+      // Estimate duration for the target ayah
+      const knownDurations = ayahDurations.filter((d: number) => d > 0);
+      const estimatedDuration = ayahDurations[ayahNumber - 1] ||
+        (knownDurations.length > 0
+          ? knownDurations.reduce((a: number, b: number) => a + b, 0) / knownDurations.length
+          : 10);
+
       set({
         currentAyahInSurah: ayahNumber,
         accumulatedTime: newAccumulated,
         currentAyahTime: 0,
-        currentAyahDuration: 0,
+        currentAyahDuration: estimatedDuration,
       });
     },
 

@@ -105,3 +105,31 @@ Stage Summary:
 - Reciters reduced from 25 (15 broken) to 10 (all verified working)
 - Audio engine now properly handles reciter and quality switches while playing
 - Added Abu Bakr Ash-Shaatree as new reciter
+
+---
+Task ID: 8
+Agent: Main Orchestrator
+Task: Fix progress bar pausing after each ayah
+
+Work Log:
+- Diagnosed root cause: when advanceToNextAyah() fires, it resets currentAyahDuration to 0, causing progress bar to freeze until the new ayah's durationchange event fires
+- The timeupdate event only fires ~4x/second, creating visible stepping in the progress bar
+- The 500ms isTransitioning guard was too long, adding unnecessary delay between ayahs
+- Fixed audio-store.ts:
+  - advanceToNextAyah() now estimates next ayah duration from average of known durations instead of setting to 0
+  - seekToAyah() also estimates duration for the target ayah
+  - This prevents the progress bar from visually freezing during transitions
+- Fixed audio-player.tsx:
+  - Replaced timeupdate-based progress with requestAnimationFrame loop (60fps smooth tracking)
+  - Added early preloading: triggers preload of next ayah when 80% through current ayah
+  - Reduced transition guard from 500ms to 150ms
+  - Used useCallback for handleAyahEnd instead of ref-during-render (fixed React Compiler lint error)
+  - Removed timeupdate event listener (RAF handles progress updates now)
+  - Progress bar fill now has no CSS transition delay for real-time response
+- Lint: 0 errors, 1 expected warning
+
+Stage Summary:
+- Progress bar now moves smoothly at 60fps instead of stepping every 250ms
+- No more freezing/jumping between ayahs (estimated duration keeps bar moving)
+- Faster transitions (150ms guard instead of 500ms)
+- Early preloading at 80% through current ayah ensures next ayah is ready
