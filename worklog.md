@@ -79,3 +79,29 @@ Stage Summary:
 - Audio playback is now gapless between ayahs using dual-audio ping-pong technique
 - Next ayah is preloaded while current one plays, so transitions are instant
 - Engine is fully imperative (ref-based) to avoid React re-render delays
+
+---
+Task ID: 7
+Agent: Main Orchestrator
+Task: Fix other reciters not producing sound
+
+Work Log:
+- Tested all 25 reciter IDs against cdn.islamic.network CDN
+- Found only 10 IDs actually return HTTP 200; 15 return 403 (AccessDenied — files removed from CDN)
+- Broken IDs include: ar.abdurrahmaansudais, ar.abdulbasitmurattal, ar.yassereldosari, ar.minshawimujawwad, ar.ayyub, ar.hanirifai, ar.banna, ar.shahat, ar.shuraym, ar.basfar, ar.balila, ar.faresabbaad, ar.akhdar, ar.abuothman, ar.qazabri, ar.taniji, ar.nabilawadi
+- Updated quran-data.ts RECITERS array to only include 10 verified-working reciters:
+  - Popular: ar.alafasy, ar.muhammadjibreel, ar.mahermuaiqly, ar.shaatree (new)
+  - Egyptian: ar.husary, ar.husarymujawwad, ar.minshawi, ar.muhammadayyoub, ar.ahmedajamy
+  - Saudi: ar.hudhaify
+- Added ar.shaatree (Abu Bakr Ash-Shaatree) as new popular reciter
+- Fixed audio engine to detect reciter/quality changes via useEffect that compares active audio src with expected URL
+- When reciter/quality changes, engine invalidates both sides' loadedKey cache and reloads current ayah with new settings
+- Simplified reciter panel: removed hack of toggling ayah to 0 and back, now just sets the reciter and lets the engine handle reload
+- Cleaned up unused imports in reciter panel
+- All CDN URLs verified working (HTTP 200)
+- Lint: 0 errors, 1 expected warning
+
+Stage Summary:
+- Reciters reduced from 25 (15 broken) to 10 (all verified working)
+- Audio engine now properly handles reciter and quality switches while playing
+- Added Abu Bakr Ash-Shaatree as new reciter

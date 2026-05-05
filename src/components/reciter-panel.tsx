@@ -34,13 +34,9 @@ export default function ReciterPanel() {
     toggleReciterPanel,
     currentReciter,
     setCurrentReciter,
-    reciter,
     setReciter,
     audioQuality,
     setAudioQuality,
-    isPlaying,
-    currentAyahInSurah,
-    setCurrentAyahInSurah,
   } = useAudioStore();
 
   const [search, setSearch] = useState("");
@@ -76,18 +72,10 @@ export default function ReciterPanel() {
     return groups;
   }, [filteredReciters]);
 
-  /** Select a reciter — if playing, immediately switch audio */
+  /** Select a reciter — the audio player engine detects reciter changes and reloads */
   const handleSelectReciter = (r: Reciter) => {
-    // Update both APIs
     setCurrentReciter(r.id);
     setReciter(r);
-
-    // If playing, force reload audio by toggling ayah
-    if (isPlaying) {
-      const current = currentAyahInSurah;
-      setCurrentAyahInSurah(0);
-      setTimeout(() => setCurrentAyahInSurah(current), 0);
-    }
 
     // Close panel after selection
     setShowReciterPanel(false);
@@ -96,14 +84,9 @@ export default function ReciterPanel() {
     }
   };
 
-  /** Change audio quality — if playing, immediately switch audio */
+  /** Change audio quality — the audio player engine detects quality changes and reloads */
   const handleQualityChange = (quality: string) => {
     setAudioQuality(quality);
-    if (isPlaying) {
-      const current = currentAyahInSurah;
-      setCurrentAyahInSurah(0);
-      setTimeout(() => setCurrentAyahInSurah(current), 0);
-    }
   };
 
   const handleClose = (open: boolean) => {

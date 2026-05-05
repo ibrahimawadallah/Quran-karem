@@ -118,35 +118,19 @@ export const SURAH_DATA: Surah[] = [
 ];
 
 export const RECITERS: Reciter[] = [
-  // Popular
+  // Popular — all verified working on cdn.islamic.network
   { id: "ar.alafasy", name: "Mishary Rashid Alafasy", arabicName: "مشاري راشد العفاسي", country: "Kuwait", category: "Popular", style: "Murattal" },
-  { id: "ar.abdurrahmaansudais", name: "Abdurrahman As-Sudais", arabicName: "عبدالرحمن السديس", country: "Saudi Arabia", category: "Popular", style: "Murattal" },
-  { id: "ar.abdulbasitmurattal", name: "Abdul Basit (Murattal)", arabicName: "عبدالباسط عبدالصمد", country: "Egypt", category: "Popular", style: "Murattal" },
   { id: "ar.muhammadjibreel", name: "Muhammad Jibreel", arabicName: "محمد جبريل", country: "Egypt", category: "Popular", style: "Murattal" },
   { id: "ar.mahermuaiqly", name: "Maher Al Muaiqly", arabicName: "ماهر المعيقلي", country: "Saudi Arabia", category: "Popular", style: "Murattal" },
-  { id: "ar.yassereldosari", name: "Yasser Ad-Dosari", arabicName: "ياسر الدوسري", country: "Saudi Arabia", category: "Popular", style: "Murattal" },
+  { id: "ar.shaatree", name: "Abu Bakr Ash-Shaatree", arabicName: "أبو بكر الشاطري", country: "Saudi Arabia", category: "Popular", style: "Murattal" },
   // Egyptian
   { id: "ar.husary", name: "Mahmoud Khalil Al-Husary", arabicName: "محمود خليل الحصري", country: "Egypt", category: "Egyptian", style: "Murattal" },
-  { id: "ar.husarymujawwad", name: "Mahmoud Khalil Al-Husary (Mujawwad)", arabicName: "محمود خليل الحصري مجود", country: "Egypt", category: "Egyptian", style: "Mujawwad" },
+  { id: "ar.husarymujawwad", name: "Al-Husary (Mujawwad)", arabicName: "محمود خليل الحصري مجود", country: "Egypt", category: "Egyptian", style: "Mujawwad" },
   { id: "ar.minshawi", name: "Mohamed Siddiq El-Minshawi", arabicName: "محمد صديق المنشاوي", country: "Egypt", category: "Egyptian", style: "Murattal" },
-  { id: "ar.minshawimujawwad", name: "Mohamed Siddiq El-Minshawi (Mujawwad)", arabicName: "محمد صديق المنشاوي مجود", country: "Egypt", category: "Egyptian", style: "Mujawwad" },
-  { id: "ar.ayyub", name: "Muhammad Ayyub", arabicName: "محمد أيوب", country: "Egypt", category: "Egyptian", style: "Murattal" },
-  { id: "ar.hanirifai", name: "Hani Ar-Rifai", arabicName: "هاني الرفاعي", country: "Egypt", category: "Egyptian", style: "Murattal" },
-  { id: "ar.ahmedajamy", name: "Ahmed Al-Ajamy", arabicName: "أحمد العجمي", country: "Egypt", category: "Egyptian", style: "Murattal" },
-  { id: "ar.banna", name: "Abdelbasset Abdessamad (Banna)", arabicName: "عبدالباسط عبدالصمد (بنّا)", country: "Egypt", category: "Egyptian", style: "Murattal" },
-  { id: "ar.shahat", name: "Mohammad Ash-Shahat", arabicName: "محمد الشحات", country: "Egypt", category: "Egyptian", style: "Murattal" },
+  { id: "ar.muhammadayyoub", name: "Muhammad Ayyoub", arabicName: "محمد أيوب", country: "Egypt", category: "Egyptian", style: "Murattal" },
+  { id: "ar.ahmedajamy", name: "Ahmed Al-Ajamy", arabicName: "أحمد العجمي", country: "Saudi Arabia", category: "Egyptian", style: "Murattal" },
   // Saudi
-  { id: "ar.shuraym", name: "Saoud Ash-Shuraym", arabicName: "سعود الشريم", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
   { id: "ar.hudhaify", name: "Ali Al-Hudhaify", arabicName: "علي الحذيفي", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
-  { id: "ar.basfar", name: "Abdullah Basfar", arabicName: "عبدالله بصفر", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
-  { id: "ar.balila", name: "Abdulrahman Al-Balila", arabicName: "عبدالرحمن البليهي", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
-  { id: "ar.faresabbaad", name: "Fares Abbaad", arabicName: "فارست عباد", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
-  { id: "ar.akhdar", name: "Ibrahim Al-Akhdar", arabicName: "إبراهيم الأخضر", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
-  { id: "ar.abuothman", name: "Abu Othman", arabicName: "أبو عثمان", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
-  // Other
-  { id: "ar.qazabri", name: "Abdullah Qazabri", arabicName: "عبدالالله قزابري", country: "Morocco", category: "Other", style: "Murattal" },
-  { id: "ar.taniji", name: "Aziz Al-Taniji", arabicName: "عزيز التانجي", country: "Morocco", category: "Other", style: "Murattal" },
-  { id: "ar.nabilawadi", name: "Nabil Al-Awadi", arabicName: "نبيل العوضي", country: "Kuwait", category: "Other", style: "Murattal" },
 ];
 
 export const AUDIO_QUALITIES: AudioQuality[] = [

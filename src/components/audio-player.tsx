@@ -300,6 +300,26 @@ export default function AudioPlayer() {
     }
   }, [currentAyahInSurah, surahNum, currentSurah, totalAyahsInSurah, audioQuality, currentReciter]);
 
+  // Handle reciter or quality change while playing — reload current ayah with new settings
+  useEffect(() => {
+    if (!currentSurah || !isPlaying) return;
+    const eng = engineRef.current;
+
+    // Check if the loaded audio matches current reciter/quality by rebuilding the URL
+    const activeAudio = getActive();
+    if (!activeAudio || !activeAudio.src) return;
+
+    const expectedUrl = buildAudioUrl(eng.currentAyah, eng.surahNum, audioQuality, currentReciter);
+    const currentSrc = activeAudio.src;
+
+    // If the active audio src doesn't match the expected URL for current reciter/quality, reload
+    if (!currentSrc.includes(expectedUrl.split("/").slice(-2).join("/"))) {
+      // Invalidate both sides so they reload with new reciter/quality
+      eng.loadedKey = { A: "", B: "" };
+      playAyah(eng.currentAyah, eng.surahNum, audioQuality, currentReciter);
+    }
+  }, [currentReciter, audioQuality]);
+
   // Sync play/pause
   useEffect(() => {
     const audio = getActive();
