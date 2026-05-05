@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import {
   Play,
   Pause,
@@ -59,10 +59,10 @@ export default function AudioPlayer() {
     currentAyah: 1,
     totalAyahs: 7,
     surahNum: 1,
-    advancing: false,
-    eventsAttached: false,
+    isTransitioning: false, // guards against double onEnded/onError
     volume: 0.8,
     muted: false,
+    retryCount: { A: 0, B: 0 }, // retry counters per side
   });
 
   const {
@@ -120,6 +120,7 @@ export default function AudioPlayer() {
     audio.preload = "auto";
     audio.load();
     engineRef.current.loadedKey[side] = `${sNum}-${ayahInSurah}`;
+    engineRef.current.retryCount[side] = 0;
   }
 
   /** Preload the next ayah onto the inactive side */
@@ -133,10 +134,14 @@ export default function AudioPlayer() {
     loadIntoSide(inactiveSide, nextAyah, eng.surahNum, state.audioQuality, state.currentReciter);
   }
 
-  /** Start playing a specific ayah */
+  /** Start playing a specific ayah from scratch (used for surah changes, seeking, reciter changes) */
   function playAyah(ayahInSurah: number, sNum: number, quality: string, reciter: string) {
     const eng = engineRef.current;
     const key = `${sNum}-${ayahInSurah}`;
+
+    // Pause both sides first
+    if (audioARef.current) audioARef.current.pause();
+    if (audioBRef.current) audioBRef.current.pause();
 
     // Check if already loaded on active side
     if (eng.loadedKey[eng.activeSide] === key) {
@@ -150,9 +155,6 @@ export default function AudioPlayer() {
     else {
       const inactiveSide = eng.activeSide === "A" ? "B" : "A";
       if (eng.loadedKey[inactiveSide] === key) {
-        // Pause current active
-        getActive()?.pause();
-        // Swap sides
         eng.activeSide = inactiveSide;
         const newActive = getActive();
         if (newActive) {
@@ -171,17 +173,19 @@ export default function AudioPlayer() {
 
     eng.currentAyah = ayahInSurah;
     eng.surahNum = sNum;
-    eng.advancing = false;
+    eng.isTransitioning = false;
 
     // Preload next ayah after a small delay
-    setTimeout(preloadNext, 100);
+    setTimeout(preloadNext, 150);
   }
 
   /** Handle ayah ended — gapless transition */
   function handleAyahEnd() {
     const eng = engineRef.current;
-    if (eng.advancing) return;
-    eng.advancing = true;
+
+    // Guard against double onEnded/onError for the same ayah
+    if (eng.isTransitioning) return;
+    eng.isTransitioning = true;
 
     const nextAyah = eng.currentAyah + 1;
     const state = useAudioStore.getState();
@@ -194,7 +198,11 @@ export default function AudioPlayer() {
 
       // Play immediately — no React re-render delay!
       if (newActive) {
-        newActive.play().catch(() => {});
+        newActive.currentTime = 0;
+        newActive.play().catch(() => {
+          // If play fails (e.g., not loaded yet), we'll rely on the canplay event
+          // or the error handler to retry
+        });
       }
 
       eng.currentAyah = nextAyah;
@@ -203,7 +211,7 @@ export default function AudioPlayer() {
       advanceToNextAyah();
 
       // Preload the ayah after next onto the now-inactive side
-      if (newInactive && nextAyah + 1 <= eng.totalAyahs) {
+      if (nextAyah + 1 <= eng.totalAyahs) {
         loadIntoSide(
           eng.activeSide === "A" ? "B" : "A",
           nextAyah + 1,
@@ -212,19 +220,54 @@ export default function AudioPlayer() {
           state.currentReciter
         );
       }
+
+      // Reset the transition guard after a safe delay.
+      // This prevents double-handling from onEnded+onError firing for the same ayah,
+      // but allows the next ayah's onEnded to be processed normally.
+      setTimeout(() => {
+        eng.isTransitioning = false;
+      }, 500);
     } else {
       // Last ayah done — advance to next surah
       advanceToNextAyah();
+      // Reset transition flag for the new surah
+      eng.isTransitioning = false;
+    }
+  }
+
+  /** Handle audio error — retry once, then skip to next ayah */
+  function handleAudioError(side: "A" | "B") {
+    const eng = engineRef.current;
+    const audio = side === "A" ? audioARef.current : audioBRef.current;
+    if (!audio) return;
+
+    // Only handle errors from the active side
+    if (side !== eng.activeSide) return;
+
+    const retryCount = eng.retryCount[side];
+
+    if (retryCount < 2) {
+      // Retry: reload the same audio
+      eng.retryCount[side] = retryCount + 1;
+      const url = buildAudioUrl(eng.currentAyah, eng.surahNum, useAudioStore.getState().audioQuality, useAudioStore.getState().currentReciter);
+      audio.src = url;
+      audio.load();
+      audio.play().catch(() => {});
+    } else {
+      // Failed after retries — skip to next ayah
+      // Only advance if this is the active side that errored
+      if (!eng.isTransitioning) {
+        handleAyahEnd();
+      }
     }
   }
 
   // Set up event handlers on both audio elements (once)
   useEffect(() => {
-    const setupEvents = (audio: HTMLAudioElement) => {
+    const setupEvents = (audio: HTMLAudioElement, side: "A" | "B") => {
       const isActiveAudio = () => {
         const eng = engineRef.current;
-        return (eng.activeSide === "A" && audio === audioARef.current) ||
-               (eng.activeSide === "B" && audio === audioBRef.current);
+        return eng.activeSide === side;
       };
 
       const onTimeUpdate = () => {
@@ -252,6 +295,8 @@ export default function AudioPlayer() {
         if (isActiveAudio()) {
           setIsBuffering(false);
           setIsPlaying(true);
+          // Reset retry count on successful playback
+          engineRef.current.retryCount[side] = 0;
         }
       };
 
@@ -260,7 +305,7 @@ export default function AudioPlayer() {
       };
 
       const onError = () => {
-        if (isActiveAudio()) handleAyahEnd();
+        if (isActiveAudio()) handleAudioError(side);
       };
 
       audio.addEventListener("timeupdate", onTimeUpdate);
@@ -283,8 +328,8 @@ export default function AudioPlayer() {
     };
 
     const cleanups: (() => void)[] = [];
-    if (audioARef.current) cleanups.push(setupEvents(audioARef.current));
-    if (audioBRef.current) cleanups.push(setupEvents(audioBRef.current));
+    if (audioARef.current) cleanups.push(setupEvents(audioARef.current, "A"));
+    if (audioBRef.current) cleanups.push(setupEvents(audioBRef.current, "B"));
 
     return () => cleanups.forEach((c) => c());
   }, []);
@@ -302,18 +347,24 @@ export default function AudioPlayer() {
 
   // Handle reciter or quality change while playing — reload current ayah with new settings
   useEffect(() => {
-    if (!currentSurah || !isPlaying) return;
+    if (!currentSurah) return;
     const eng = engineRef.current;
 
     // Check if the loaded audio matches current reciter/quality by rebuilding the URL
     const activeAudio = getActive();
-    if (!activeAudio || !activeAudio.src) return;
+    if (!activeAudio || !activeAudio.src) {
+      // No audio loaded yet — load it
+      playAyah(eng.currentAyah, eng.surahNum, audioQuality, currentReciter);
+      return;
+    }
 
     const expectedUrl = buildAudioUrl(eng.currentAyah, eng.surahNum, audioQuality, currentReciter);
     const currentSrc = activeAudio.src;
 
     // If the active audio src doesn't match the expected URL for current reciter/quality, reload
-    if (!currentSrc.includes(expectedUrl.split("/").slice(-2).join("/"))) {
+    // Compare the reciter ID and ayah number part of the URL
+    const expectedPart = `/${audioQuality}/${currentReciter}/`;
+    if (!currentSrc.includes(expectedPart)) {
       // Invalidate both sides so they reload with new reciter/quality
       eng.loadedKey = { A: "", B: "" };
       playAyah(eng.currentAyah, eng.surahNum, audioQuality, currentReciter);
@@ -370,6 +421,30 @@ export default function AudioPlayer() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isPlayerVisible, currentSurah, togglePlay, prevSurah, nextSurah, hidePlayer]);
+
+  // Stuck detection: if we're supposed to be playing but no timeupdate for 10s, try to recover
+  useEffect(() => {
+    if (!isPlaying || !currentSurah) return;
+
+    const stuckTimer = setInterval(() => {
+      const eng = engineRef.current;
+      const audio = getActive();
+      if (!audio || !audio.src) return;
+
+      // If we're supposed to be playing but audio is paused or ended, try to recover
+      if (audio.paused && !audio.ended) {
+        // Audio paused unexpectedly — try to resume
+        audio.play().catch(() => {});
+      } else if (audio.ended) {
+        // Audio ended but onEnded didn't fire — advance manually
+        if (!eng.isTransitioning) {
+          handleAyahEnd();
+        }
+      }
+    }, 10000);
+
+    return () => clearInterval(stuckTimer);
+  }, [isPlaying, currentSurah]);
 
   /** Click on progress bar to seek */
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
