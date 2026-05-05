@@ -394,3 +394,47 @@ input[type="range"]::-moz-range-thumb:hover {
 .interactive-transition:active {
   transform: translateY(0);
 }
+
+/* Safe area support for iOS devices */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Mobile touch improvements */
+@media (hover: none) {
+  .interactive-transition:hover {
+    transform: none;
+  }
+  
+  .glass-card-hover:hover {
+    background: rgba(20, 10, 40, 0.6);
+    border-color: rgba(139, 92, 246, 0.15);
+    box-shadow: none;
+  }
+  
+  .glass-card-hover:active {
+    background: rgba(30, 15, 55, 0.7);
+    border-color: rgba(139, 92, 246, 0.3);
+  }
+}
+
+/* Prevent text selection on interactive elements */
+.glass-card-hover,
+.interactive-transition,
+.surah-number-badge {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Smooth scrolling on mobile */
+@media (max-width: 640px) {
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Viewport meta handled by Next.js - add touch-action for progress bars */
+.touch-none {
+  touch-action: none;
+}

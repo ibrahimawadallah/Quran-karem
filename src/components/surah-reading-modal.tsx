@@ -110,7 +110,7 @@ export default function SurahReadingModal() {
   return (
     <Dialog open={showSurahModal} onOpenChange={(open) => !open && closeReadingModal()}>
       <DialogContent
-        className="flex flex-col gap-0 p-0 overflow-hidden max-h-[90vh] sm:max-h-[85vh] border-purple-900/30 sm:max-w-lg"
+        className="flex flex-col gap-0 p-0 overflow-hidden max-h-[95vh] sm:max-h-[85vh] border-purple-900/30 sm:max-w-lg w-[95vw] sm:w-auto"
         style={{
           background: "rgba(15, 10, 30, 0.95)",
           backdropFilter: "blur(20px)",

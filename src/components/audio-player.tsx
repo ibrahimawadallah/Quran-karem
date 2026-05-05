@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import {
   Play,
   Pause,
@@ -10,6 +10,7 @@ import {
   VolumeX,
   X,
   Loader2,
+  ChevronUp,
 } from "lucide-react";
 import { useAudioStore, getStartingAyahNumber } from "@/lib/audio-store";
 import { Slider } from "@/components/ui/slider";
@@ -24,11 +25,11 @@ function formatTime(seconds: number): string {
 /** Audio wave animation bars */
 function AudioWave({ isPlaying }: { isPlaying: boolean }) {
   return (
-    <div className="flex items-end gap-[3px] h-4">
+    <div className="flex items-end gap-[2px] sm:gap-[3px] h-4">
       {[0, 1, 2, 3, 4].map((i) => (
         <div
           key={i}
-          className="w-[3px] rounded-full bg-amber-500"
+          className="w-[2px] sm:w-[3px] rounded-full bg-amber-500"
           style={{
             height: isPlaying ? undefined : "4px",
             animation: isPlaying
@@ -55,15 +56,19 @@ export default function AudioPlayer() {
   // Imperative engine state — all in refs to avoid re-render delays
   const engineRef = useRef({
     activeSide: "A" as "A" | "B",
-    loadedKey: { A: "", B: "" }, // "surahNum-ayahNum" to track what's loaded where
+    loadedKey: { A: "", B: "" },
     currentAyah: 1,
     totalAyahs: 7,
     surahNum: 1,
-    isTransitioning: false, // guards against double onEnded/onError
+    isTransitioning: false,
     volume: 0.8,
     muted: false,
-    retryCount: { A: 0, B: 0 }, // retry counters per side
+    retryCount: { A: 0, B: 0 },
+    // Preload tracking
+    preloadedUpTo: 0,
   });
+
+  const [expanded, setExpanded] = useState(false);
 
   const {
     isPlayerVisible,
@@ -95,23 +100,22 @@ export default function AudioPlayer() {
 
   const surahNum = currentSurah?.number ?? 1;
 
-  /** Get audio URL for an ayah */
+  /** Get audio URL for an ayah — always use 128k minimum for quality */
   function buildAudioUrl(ayahInSurah: number, sNum: number, quality: string, reciter: string): string {
     const absoluteAyah = getStartingAyahNumber(sNum) + ayahInSurah - 1;
-    return `https://cdn.islamic.network/quran/audio/${quality}/${reciter}/${absoluteAyah}.mp3`;
+    // Ensure minimum quality of 128kbps even if user selected 64
+    const effectiveQuality = parseInt(quality) < 128 ? "128" : quality;
+    return `https://cdn.islamic.network/quran/audio/${effectiveQuality}/${reciter}/${absoluteAyah}.mp3`;
   }
 
-  /** Get the currently active audio element */
   function getActive(): HTMLAudioElement | null {
     return engineRef.current.activeSide === "A" ? audioARef.current : audioBRef.current;
   }
 
-  /** Get the inactive (preloaded) audio element */
   function getInactive(): HTMLAudioElement | null {
     return engineRef.current.activeSide === "A" ? audioBRef.current : audioARef.current;
   }
 
-  /** Load an ayah into a specific side */
   function loadIntoSide(side: "A" | "B", ayahInSurah: number, sNum: number, quality: string, reciter: string) {
     const audio = side === "A" ? audioARef.current : audioBRef.current;
     if (!audio) return;
@@ -134,7 +138,6 @@ export default function AudioPlayer() {
     loadIntoSide(inactiveSide, nextAyah, eng.surahNum, state.audioQuality, state.currentReciter);
   }
 
-  /** Start playing a specific ayah from scratch (used for surah changes, seeking, reciter changes) */
   function playAyah(ayahInSurah: number, sNum: number, quality: string, reciter: string) {
     const eng = engineRef.current;
     const key = `${sNum}-${ayahInSurah}`;
@@ -143,16 +146,13 @@ export default function AudioPlayer() {
     if (audioARef.current) audioARef.current.pause();
     if (audioBRef.current) audioBRef.current.pause();
 
-    // Check if already loaded on active side
     if (eng.loadedKey[eng.activeSide] === key) {
       const audio = getActive();
       if (audio) {
         audio.currentTime = 0;
         audio.play().catch(() => {});
       }
-    }
-    // Check if loaded on inactive side — swap
-    else {
+    } else {
       const inactiveSide = eng.activeSide === "A" ? "B" : "A";
       if (eng.loadedKey[inactiveSide] === key) {
         eng.activeSide = inactiveSide;
@@ -162,7 +162,6 @@ export default function AudioPlayer() {
           newActive.play().catch(() => {});
         }
       } else {
-        // Not loaded anywhere — load onto active side
         loadIntoSide(eng.activeSide, ayahInSurah, sNum, quality, reciter);
         const audio = getActive();
         if (audio) {
@@ -175,15 +174,12 @@ export default function AudioPlayer() {
     eng.surahNum = sNum;
     eng.isTransitioning = false;
 
-    // Preload next ayah after a small delay
-    setTimeout(preloadNext, 150);
+    // Preload next ayah quickly
+    setTimeout(preloadNext, 100);
   }
 
-  /** Handle ayah ended — gapless transition */
   function handleAyahEnd() {
     const eng = engineRef.current;
-
-    // Guard against double onEnded/onError for the same ayah
     if (eng.isTransitioning) return;
     eng.isTransitioning = true;
 
@@ -191,26 +187,20 @@ export default function AudioPlayer() {
     const state = useAudioStore.getState();
 
     if (nextAyah <= eng.totalAyahs) {
-      // --- GAPLESS: swap to preloaded inactive side immediately ---
+      // GAPLESS: swap to preloaded inactive side immediately
       eng.activeSide = eng.activeSide === "A" ? "B" : "A";
       const newActive = getActive();
       const newInactive = getInactive();
 
-      // Play immediately — no React re-render delay!
       if (newActive) {
         newActive.currentTime = 0;
-        newActive.play().catch(() => {
-          // If play fails (e.g., not loaded yet), we'll rely on the canplay event
-          // or the error handler to retry
-        });
+        newActive.play().catch(() => {});
       }
 
       eng.currentAyah = nextAyah;
-
-      // Update store for UI (triggers re-render, but audio already playing)
       advanceToNextAyah();
 
-      // Preload the ayah after next onto the now-inactive side
+      // Preload the ayah after next
       if (nextAyah + 1 <= eng.totalAyahs) {
         loadIntoSide(
           eng.activeSide === "A" ? "B" : "A",
@@ -221,59 +211,40 @@ export default function AudioPlayer() {
         );
       }
 
-      // Reset the transition guard after a safe delay.
-      // This prevents double-handling from onEnded+onError firing for the same ayah,
-      // but allows the next ayah's onEnded to be processed normally.
       setTimeout(() => {
         eng.isTransitioning = false;
       }, 500);
     } else {
-      // Last ayah done — advance to next surah
       advanceToNextAyah();
-      // Reset transition flag for the new surah
       eng.isTransitioning = false;
     }
   }
 
-  /** Handle audio error — retry once, then skip to next ayah */
   function handleAudioError(side: "A" | "B") {
     const eng = engineRef.current;
     const audio = side === "A" ? audioARef.current : audioBRef.current;
-    if (!audio) return;
-
-    // Only handle errors from the active side
-    if (side !== eng.activeSide) return;
+    if (!audio || side !== eng.activeSide) return;
 
     const retryCount = eng.retryCount[side];
-
     if (retryCount < 2) {
-      // Retry: reload the same audio
       eng.retryCount[side] = retryCount + 1;
       const url = buildAudioUrl(eng.currentAyah, eng.surahNum, useAudioStore.getState().audioQuality, useAudioStore.getState().currentReciter);
       audio.src = url;
       audio.load();
       audio.play().catch(() => {});
     } else {
-      // Failed after retries — skip to next ayah
-      // Only advance if this is the active side that errored
-      if (!eng.isTransitioning) {
-        handleAyahEnd();
-      }
+      if (!eng.isTransitioning) handleAyahEnd();
     }
   }
 
-  // Set up event handlers on both audio elements (once)
+  // Set up event handlers
   useEffect(() => {
     const setupEvents = (audio: HTMLAudioElement, side: "A" | "B") => {
-      const isActiveAudio = () => {
-        const eng = engineRef.current;
-        return eng.activeSide === side;
-      };
+      const isActiveAudio = () => engineRef.current.activeSide === side;
 
       const onTimeUpdate = () => {
         if (isActiveAudio()) setCurrentAyahTime(audio.currentTime);
       };
-
       const onDurationChange = () => {
         if (isActiveAudio() && isFinite(audio.duration) && audio.duration > 0) {
           setCurrentAyahDuration(audio.duration);
@@ -282,28 +253,22 @@ export default function AudioPlayer() {
           if (idx >= 0) addAyahDuration(idx, audio.duration);
         }
       };
-
       const onCanPlay = () => {
         if (isActiveAudio()) setIsBuffering(false);
       };
-
       const onWaiting = () => {
         if (isActiveAudio()) setIsBuffering(true);
       };
-
       const onPlaying = () => {
         if (isActiveAudio()) {
           setIsBuffering(false);
           setIsPlaying(true);
-          // Reset retry count on successful playback
           engineRef.current.retryCount[side] = 0;
         }
       };
-
       const onEnded = () => {
         if (isActiveAudio()) handleAyahEnd();
       };
-
       const onError = () => {
         if (isActiveAudio()) handleAudioError(side);
       };
@@ -330,42 +295,31 @@ export default function AudioPlayer() {
     const cleanups: (() => void)[] = [];
     if (audioARef.current) cleanups.push(setupEvents(audioARef.current, "A"));
     if (audioBRef.current) cleanups.push(setupEvents(audioBRef.current, "B"));
-
     return () => cleanups.forEach((c) => c());
   }, []);
 
-  // Start playing when surah/ayah changes from store
+  // Start playing when surah/ayah changes
   useEffect(() => {
     if (!currentSurah) return;
     const eng = engineRef.current;
     eng.totalAyahs = totalAyahsInSurah;
-
     if (currentAyahInSurah !== eng.currentAyah || surahNum !== eng.surahNum) {
       playAyah(currentAyahInSurah, surahNum, audioQuality, currentReciter);
     }
   }, [currentAyahInSurah, surahNum, currentSurah, totalAyahsInSurah, audioQuality, currentReciter]);
 
-  // Handle reciter or quality change while playing — reload current ayah with new settings
+  // Handle reciter/quality change
   useEffect(() => {
     if (!currentSurah) return;
     const eng = engineRef.current;
-
-    // Check if the loaded audio matches current reciter/quality by rebuilding the URL
     const activeAudio = getActive();
     if (!activeAudio || !activeAudio.src) {
-      // No audio loaded yet — load it
       playAyah(eng.currentAyah, eng.surahNum, audioQuality, currentReciter);
       return;
     }
-
-    const expectedUrl = buildAudioUrl(eng.currentAyah, eng.surahNum, audioQuality, currentReciter);
-    const currentSrc = activeAudio.src;
-
-    // If the active audio src doesn't match the expected URL for current reciter/quality, reload
-    // Compare the reciter ID and ayah number part of the URL
     const expectedPart = `/${audioQuality}/${currentReciter}/`;
-    if (!currentSrc.includes(expectedPart)) {
-      // Invalidate both sides so they reload with new reciter/quality
+    const effectivePart = `/128/${currentReciter}/`; // we always use min 128
+    if (!activeAudio.src.includes(expectedPart) && !activeAudio.src.includes(effectivePart)) {
       eng.loadedKey = { A: "", B: "" };
       playAyah(eng.currentAyah, eng.surahNum, audioQuality, currentReciter);
     }
@@ -375,7 +329,6 @@ export default function AudioPlayer() {
   useEffect(() => {
     const audio = getActive();
     if (!audio || !audio.src) return;
-
     if (isPlaying) {
       audio.play().catch(() => {});
     } else {
@@ -383,7 +336,7 @@ export default function AudioPlayer() {
     }
   }, [isPlaying]);
 
-  // Apply volume to both audio elements
+  // Volume
   useEffect(() => {
     const vol = isMuted ? 0 : volume;
     engineRef.current.volume = volume;
@@ -397,7 +350,6 @@ export default function AudioPlayer() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isPlayerVisible || !currentSurah) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-
       switch (e.code) {
         case "Space":
           e.preventDefault();
@@ -417,41 +369,41 @@ export default function AudioPlayer() {
           break;
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isPlayerVisible, currentSurah, togglePlay, prevSurah, nextSurah, hidePlayer]);
 
-  // Stuck detection: if we're supposed to be playing but no timeupdate for 10s, try to recover
+  // Stuck detection
   useEffect(() => {
     if (!isPlaying || !currentSurah) return;
-
     const stuckTimer = setInterval(() => {
       const eng = engineRef.current;
       const audio = getActive();
       if (!audio || !audio.src) return;
-
-      // If we're supposed to be playing but audio is paused or ended, try to recover
       if (audio.paused && !audio.ended) {
-        // Audio paused unexpectedly — try to resume
         audio.play().catch(() => {});
       } else if (audio.ended) {
-        // Audio ended but onEnded didn't fire — advance manually
-        if (!eng.isTransitioning) {
-          handleAyahEnd();
-        }
+        if (!eng.isTransitioning) handleAyahEnd();
       }
-    }, 10000);
-
+    }, 8000);
     return () => clearInterval(stuckTimer);
   }, [isPlaying, currentSurah]);
 
-  /** Click on progress bar to seek */
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!currentSurah) return;
     const bar = e.currentTarget;
     const rect = bar.getBoundingClientRect();
     const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const targetAyah = Math.max(1, Math.ceil(ratio * totalAyahsInSurah));
+    seekToAyah(targetAyah);
+  };
+
+  // Touch support for progress bar
+  const handleProgressTouch = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!currentSurah || !e.touches[0]) return;
+    const bar = e.currentTarget;
+    const rect = bar.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.touches[0].clientX - rect.left) / rect.width));
     const targetAyah = Math.max(1, Math.ceil(ratio * totalAyahsInSurah));
     seekToAyah(targetAyah);
   };
@@ -475,17 +427,18 @@ export default function AudioPlayer() {
       <audio ref={audioBRef} preload="auto" />
 
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 border-t border-purple-500/20"
+        className="fixed bottom-0 left-0 right-0 z-50 border-t border-purple-500/20 safe-area-bottom"
         style={{
           background: "rgba(10, 5, 24, 0.95)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
         }}
       >
-        {/* Surah-level progress bar */}
+        {/* Surah-level progress bar — always visible */}
         <div
-          className="w-full h-1.5 cursor-pointer group relative"
+          className="w-full h-1 sm:h-1.5 cursor-pointer group relative touch-none"
           onClick={handleProgressClick}
+          onTouchMove={handleProgressTouch}
           style={{ background: "rgba(139, 92, 246, 0.15)" }}
         >
           <div
@@ -493,63 +446,66 @@ export default function AudioPlayer() {
             style={{ width: `${Math.min(100, surahProgressPercent)}%` }}
           />
           <div
-            className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-amber-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg shadow-amber-400/50"
+            className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-amber-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg shadow-amber-400/50"
             style={{
               left: `${Math.min(100, surahProgressPercent)}%`,
-              marginLeft: "-6px",
+              marginLeft: "-5px",
             }}
           />
-          {totalAyahsInSurah <= 30 &&
-            Array.from({ length: totalAyahsInSurah - 1 }, (_, i) => (
-              <div
-                key={i}
-                className="absolute top-0 h-full w-px bg-purple-500/30"
-                style={{ left: `${((i + 1) / totalAyahsInSurah) * 100}%` }}
-              />
-            ))}
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4 px-3 sm:px-6 py-3 max-w-screen-xl mx-auto">
+        {/* Main controls row — compact on mobile, expandable */}
+        <div className="flex items-center gap-1.5 sm:gap-4 px-2 sm:px-6 py-2 sm:py-3 max-w-screen-xl mx-auto">
           {/* Left: Surah info + wave */}
-          <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <AudioWave isPlaying={isPlaying} />
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-amber-400 font-medium">{currentSurah.number}</span>
-                <span className="arabic-name text-lg text-amber-400 truncate">{currentSurah.arabicName}</span>
-                <span className="text-xs text-muted-foreground truncate hidden sm:inline">{currentSurah.englishName}</span>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="text-[10px] sm:text-xs text-amber-400 font-medium">{currentSurah.number}</span>
+                <span className="arabic-name text-base sm:text-lg text-amber-400 truncate">{currentSurah.arabicName}</span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground truncate hidden sm:inline">{currentSurah.englishName}</span>
               </div>
-              <div className="text-[11px] text-muted-foreground tabular-nums">
-                Ayah {currentAyahInSurah} / {totalAyahsInSurah}
+              <div className="text-[10px] sm:text-[11px] text-muted-foreground tabular-nums">
+                {currentAyahInSurah}/{totalAyahsInSurah}
                 {totalSurahTime > 0 && (
-                  <span className="hidden sm:inline"> &middot; {formatTime(surahPosition)} / {formatTime(totalSurahTime)}</span>
+                  <span className="hidden sm:inline"> &middot; {formatTime(surahPosition)}/{formatTime(totalSurahTime)}</span>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Center: Controls */}
-          <div className="flex items-center gap-1 sm:gap-2">
-            <button onClick={prevSurah} className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-purple-500/10 active:scale-95" aria-label="Previous surah">
-              <SkipBack className="w-4 h-4" />
+          {/* Center: Controls — always visible */}
+          <div className="flex items-center gap-0.5 sm:gap-2 shrink-0">
+            <button onClick={prevSurah} className="p-1.5 sm:p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-purple-500/10 active:scale-95" aria-label="Previous surah">
+              <SkipBack className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
             <button
               onClick={togglePlay}
-              className={`p-2.5 rounded-full transition-all active:scale-95 ${
+              className={`p-2 sm:p-2.5 rounded-full transition-all active:scale-95 ${
                 isPlaying ? "bg-amber-500 text-[#0a0518] hover:bg-amber-400 shadow-lg shadow-amber-500/30" : "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
               }`}
               aria-label={isPlaying ? "Pause" : "Play"}
             >
-              {isBuffering ? <Loader2 className="w-5 h-5 animate-spin" /> : isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+              {isBuffering ? <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" /> : isPlaying ? <Pause className="w-4 h-4 sm:w-5 sm:h-5" /> : <Play className="w-4 h-4 sm:w-5 sm:h-5 ml-0.5" />}
             </button>
-            <button onClick={nextSurah} className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-purple-500/10 active:scale-95" aria-label="Next surah">
-              <SkipForward className="w-4 h-4" />
+            <button onClick={nextSurah} className="p-1.5 sm:p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-purple-500/10 active:scale-95" aria-label="Next surah">
+              <SkipForward className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           </div>
 
           {/* Right: Volume + Close */}
-          <div className="flex items-center gap-2 sm:gap-3 flex-1 justify-end">
-            <div className="hidden md:flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-3 flex-1 justify-end">
+            {/* Mobile: tap to toggle mute */}
+            <button
+              onClick={() => setIsMuted(!isMuted)}
+              className="sm:hidden p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={isMuted ? "Unmute" : "Mute"}
+            >
+              {isMuted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+
+            {/* Desktop: volume slider */}
+            <div className="hidden sm:flex items-center gap-2">
               <button onClick={() => setIsMuted(!isMuted)} className="text-muted-foreground hover:text-foreground transition-colors" aria-label={isMuted ? "Unmute" : "Mute"}>
                 {isMuted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
               </button>
@@ -558,7 +514,7 @@ export default function AudioPlayer() {
               </div>
             </div>
             <button onClick={hidePlayer} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-purple-500/10 active:scale-95" aria-label="Close player">
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           </div>
         </div>
