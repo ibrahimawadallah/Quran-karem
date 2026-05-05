@@ -133,3 +133,21 @@ Stage Summary:
 - No more freezing/jumping between ayahs (estimated duration keeps bar moving)
 - Faster transitions (150ms guard instead of 500ms)
 - Early preloading at 80% through current ayah ensures next ayah is ready
+
+---
+Task ID: 9
+Agent: Main Orchestrator
+Task: Configure quran.medtechai.net domain
+
+Work Log:
+- Updated layout.tsx metadata: added metadataBase, canonical URL, OpenGraph url and siteName pointing to https://quran.medtechai.net
+- Updated vercel.json with "domains": ["quran.medtechai.net"]
+- Added website link (quran.medtechai.net) to About modal contact section with Globe icon
+- Updated footer copyright to show "quran.medtechai.net" as a clickable link
+- Added Globe import from lucide-react to header.tsx
+- Committed and pushed all changes to GitHub (ibrahimawadallah/qalam)
+- Vercel will auto-deploy from the GitHub push
+
+Stage Summary:
+- All project configs now reference quran.medtechai.net
+- User needs to add the domain in Vercel dashboard and configure DNS
