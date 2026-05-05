@@ -13,6 +13,7 @@ import {
   Shield,
   MessageSquare,
   ExternalLink,
+  Globe,
 } from "lucide-react";
 import {
   Dialog,
@@ -151,6 +152,25 @@ function AboutModal({
                   <p className="text-white text-xs font-medium">Email Support</p>
                   <p className="text-amber-400 text-sm truncate">
                     support@medtechai.net
+                  </p>
+                </div>
+                <ExternalLink className="w-3.5 h-3.5 text-gray-500 group-hover:text-amber-400 transition-colors" />
+              </a>
+
+              {/* Website */}
+              <a
+                href="https://quran.medtechai.net"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 rounded-xl border border-purple-500/20 bg-white/5 hover:bg-white/10 hover:border-amber-500/30 transition-all group"
+              >
+                <div className="w-9 h-9 rounded-full bg-amber-500/10 flex items-center justify-center group-hover:bg-amber-500/20 transition-colors">
+                  <Globe className="w-4 h-4 text-amber-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-xs font-medium">Website</p>
+                  <p className="text-amber-400 text-sm truncate">
+                    quran.medtechai.net
                   </p>
                 </div>
                 <ExternalLink className="w-3.5 h-3.5 text-gray-500 group-hover:text-amber-400 transition-colors" />

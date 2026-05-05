@@ -82,8 +82,11 @@ export default function Footer() {
         <div className="border-t border-purple-500/10 pt-4">
           <div className="flex flex-col items-center gap-2">
             <p className="text-center text-xs text-muted-foreground">
-              © {new Date().getFullYear()} Qalam — Quran Kareem Streaming App.
-              Under the authority of{" "}
+              © {new Date().getFullYear()}{" "}
+              <a href="https://quran.medtechai.net" className="text-amber-400/80 font-medium hover:text-amber-400 transition-colors">
+                quran.medtechai.net
+              </a>{" "}
+              — Qalam by{" "}
               <span className="text-amber-400/80 font-medium">
                 MedTechAI Arab Organization
               </span>
