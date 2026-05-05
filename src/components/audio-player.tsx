@@ -12,6 +12,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useAudioStore, getStartingAyahNumber } from "@/lib/audio-store";
+import { RECITERS } from "@/lib/quran-data";
 import { Slider } from "@/components/ui/slider";
 
 function formatTime(seconds: number): string {
@@ -19,6 +20,22 @@ function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+/** Check if a reciter uses surah-level audio (one file per surah) */
+function isSurahSource(reciterId: string): boolean {
+  const r = RECITERS.find((rec) => rec.id === reciterId);
+  return r?.audioSource === "surah";
+}
+
+/** Build URL for surah-level audio */
+function buildSurahAudioUrl(surahNumber: number, reciterId: string): string {
+  const r = RECITERS.find((rec) => rec.id === reciterId);
+  if (r?.audioBaseUrl) {
+    const padded = surahNumber.toString().padStart(3, "0");
+    return `${r.audioBaseUrl}/${padded}.mp3`;
+  }
+  return "";
 }
 
 /** Audio wave animation bars */
@@ -48,11 +65,14 @@ function AudioWave({ isPlaying }: { isPlaying: boolean }) {
 }
 
 export default function AudioPlayer() {
-  // Two audio elements for gapless ping-pong playback
+  // === AYAH-LEVEL ENGINE (ping-pong for cdn.islamic.network) ===
   const audioARef = useRef<HTMLAudioElement>(null);
   const audioBRef = useRef<HTMLAudioElement>(null);
 
-  // Imperative engine state — all in refs to avoid re-render delays
+  // === SURAH-LEVEL ENGINE (single file for mp3quran.net) ===
+  const surahAudioRef = useRef<HTMLAudioElement>(null);
+
+  // Imperative engine state
   const engineRef = useRef({
     activeSide: "A" as "A" | "B",
     loadedKey: { A: "", B: "" },
@@ -64,6 +84,9 @@ export default function AudioPlayer() {
     muted: false,
     retryCount: { A: 0, B: 0 },
     preloadedUpTo: 0,
+    // Surah-level state
+    surahMode: false,
+    surahLoadedKey: "",
   });
 
   const [volume, setVolume] = useState(0.8);
@@ -71,9 +94,11 @@ export default function AudioPlayer() {
 
   // RAF-based smooth progress
   const rafRef = useRef<number>(0);
-  // Track last known progress for smooth interpolation
-  const smoothProgressRef = useRef(0);
-  const lastRafTimeRef = useRef(0);
+  const earlyPreloadTriggeredRef = useRef(false);
+
+  // Surah-level progress state
+  const [surahCurrentTime, setSurahCurrentTime] = useState(0);
+  const [surahDuration, setSurahDuration] = useState(0);
 
   const {
     isPlayerVisible,
@@ -101,6 +126,12 @@ export default function AudioPlayer() {
   } = useAudioStore();
 
   const surahNum = currentSurah?.number ?? 1;
+  const surahMode = isSurahSource(currentReciter);
+
+  // Sync surahMode to engine
+  useEffect(() => {
+    engineRef.current.surahMode = surahMode;
+  }, [surahMode]);
 
   /** Get audio URL for an ayah — always use 128k minimum for quality */
   function buildAudioUrl(ayahInSurah: number, sNum: number, quality: string, reciter: string): string {
@@ -109,6 +140,7 @@ export default function AudioPlayer() {
     return `https://cdn.islamic.network/quran/audio/${effectiveQuality}/${reciter}/${absoluteAyah}.mp3`;
   }
 
+  // === AYAH-LEVEL FUNCTIONS ===
   function getActive(): HTMLAudioElement | null {
     return engineRef.current.activeSide === "A" ? audioARef.current : audioBRef.current;
   }
@@ -128,12 +160,10 @@ export default function AudioPlayer() {
     engineRef.current.retryCount[side] = 0;
   }
 
-  /** Preload the next ayah onto the inactive side */
   function preloadNext() {
     const eng = engineRef.current;
     const nextAyah = eng.currentAyah + 1;
     if (nextAyah > eng.totalAyahs) return;
-
     const state = useAudioStore.getState();
     const inactiveSide = eng.activeSide === "A" ? "B" : "A";
     loadIntoSide(inactiveSide, nextAyah, eng.surahNum, state.audioQuality, state.currentReciter);
@@ -143,43 +173,31 @@ export default function AudioPlayer() {
     const eng = engineRef.current;
     const key = `${sNum}-${ayahInSurah}`;
 
-    // Pause both sides first
     if (audioARef.current) audioARef.current.pause();
     if (audioBRef.current) audioBRef.current.pause();
 
     if (eng.loadedKey[eng.activeSide] === key) {
       const audio = getActive();
-      if (audio) {
-        audio.currentTime = 0;
-        audio.play().catch(() => {});
-      }
+      if (audio) { audio.currentTime = 0; audio.play().catch(() => {}); }
     } else {
       const inactiveSide = eng.activeSide === "A" ? "B" : "A";
       if (eng.loadedKey[inactiveSide] === key) {
         eng.activeSide = inactiveSide;
         const newActive = getActive();
-        if (newActive) {
-          newActive.currentTime = 0;
-          newActive.play().catch(() => {});
-        }
+        if (newActive) { newActive.currentTime = 0; newActive.play().catch(() => {}); }
       } else {
         loadIntoSide(eng.activeSide, ayahInSurah, sNum, quality, reciter);
         const audio = getActive();
-        if (audio) {
-          audio.play().catch(() => {});
-        }
+        if (audio) { audio.play().catch(() => {}); }
       }
     }
 
     eng.currentAyah = ayahInSurah;
     eng.surahNum = sNum;
     eng.isTransitioning = false;
-
-    // Preload next ayah quickly
     setTimeout(preloadNext, 50);
   }
 
-  // Stable callback for ayah end handling (used in event listeners & stuck detection)
   const handleAyahEnd = useCallback(() => {
     const eng = engineRef.current;
     if (eng.isTransitioning) return;
@@ -189,33 +207,16 @@ export default function AudioPlayer() {
     const state = useAudioStore.getState();
 
     if (nextAyah <= eng.totalAyahs) {
-      // GAPLESS: swap to preloaded inactive side immediately
       eng.activeSide = eng.activeSide === "A" ? "B" : "A";
       const newActive = getActive();
-
-      if (newActive) {
-        newActive.currentTime = 0;
-        newActive.play().catch(() => {});
-      }
-
+      if (newActive) { newActive.currentTime = 0; newActive.play().catch(() => {}); }
       eng.currentAyah = nextAyah;
       advanceToNextAyah();
 
-      // Preload the ayah after next
       if (nextAyah + 1 <= eng.totalAyahs) {
-        loadIntoSide(
-          eng.activeSide === "A" ? "B" : "A",
-          nextAyah + 1,
-          eng.surahNum,
-          state.audioQuality,
-          state.currentReciter
-        );
+        loadIntoSide(eng.activeSide === "A" ? "B" : "A", nextAyah + 1, eng.surahNum, state.audioQuality, state.currentReciter);
       }
-
-      // Short transition guard - just 150ms to prevent double-fire
-      setTimeout(() => {
-        eng.isTransitioning = false;
-      }, 150);
+      setTimeout(() => { eng.isTransitioning = false; }, 150);
     } else {
       advanceToNextAyah();
       eng.isTransitioning = false;
@@ -226,40 +227,100 @@ export default function AudioPlayer() {
     const eng = engineRef.current;
     const audio = side === "A" ? audioARef.current : audioBRef.current;
     if (!audio || side !== eng.activeSide) return;
-
     const retryCount = eng.retryCount[side];
     if (retryCount < 2) {
       eng.retryCount[side] = retryCount + 1;
       const url = buildAudioUrl(eng.currentAyah, eng.surahNum, useAudioStore.getState().audioQuality, useAudioStore.getState().currentReciter);
-      audio.src = url;
-      audio.load();
-      audio.play().catch(() => {});
+      audio.src = url; audio.load(); audio.play().catch(() => {});
     } else {
       if (!eng.isTransitioning) handleAyahEnd();
     }
   }
 
-  // RAF-based smooth progress tracking — reads audio.currentTime at 60fps
-  // Also triggers early preloading when 80% through current ayah
-  const earlyPreloadTriggeredRef = useRef(false);
+  // === SURAH-LEVEL PLAYBACK ===
+  const playSurahAudio = useCallback((sNum: number, reciterId: string) => {
+    const audio = surahAudioRef.current;
+    if (!audio) return;
+    const url = buildSurahAudioUrl(sNum, reciterId);
+    if (!url) return;
 
+    // Pause ayah-level audio
+    if (audioARef.current) audioARef.current.pause();
+    if (audioBRef.current) audioBRef.current.pause();
+
+    const key = `${sNum}-${reciterId}`;
+    if (engineRef.current.surahLoadedKey === key && audio.src) {
+      audio.currentTime = 0;
+      audio.play().catch(() => {});
+    } else {
+      audio.src = url;
+      audio.preload = "auto";
+      audio.load();
+      audio.play().catch(() => {});
+      engineRef.current.surahLoadedKey = key;
+    }
+  }, []);
+
+  // Set up surah audio event listeners
   useEffect(() => {
-    if (!isPlaying || !currentSurah) {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = 0;
+    const audio = surahAudioRef.current;
+    if (!audio) return;
+
+    const onTimeUpdate = () => {
+      if (isFinite(audio.currentTime)) setSurahCurrentTime(audio.currentTime);
+    };
+    const onDurationChange = () => {
+      if (isFinite(audio.duration) && audio.duration > 0) setSurahDuration(audio.duration);
+    };
+    const onCanPlay = () => setIsBuffering(false);
+    const onWaiting = () => setIsBuffering(true);
+    const onPlaying = () => { setIsBuffering(false); setIsPlaying(true); };
+    const onEnded = () => {
+      // Auto-advance to next surah
+      const state = useAudioStore.getState();
+      state.nextSurah();
+    };
+    const onError = () => {
+      // Retry once
+      const eng = engineRef.current;
+      if (eng.retryCount.A < 1) {
+        eng.retryCount.A++;
+        audio.load();
+        audio.play().catch(() => {});
       }
+    };
+
+    audio.addEventListener("timeupdate", onTimeUpdate);
+    audio.addEventListener("durationchange", onDurationChange);
+    audio.addEventListener("canplay", onCanPlay);
+    audio.addEventListener("waiting", onWaiting);
+    audio.addEventListener("playing", onPlaying);
+    audio.addEventListener("ended", onEnded);
+    audio.addEventListener("error", onError);
+
+    return () => {
+      audio.removeEventListener("timeupdate", onTimeUpdate);
+      audio.removeEventListener("durationchange", onDurationChange);
+      audio.removeEventListener("canplay", onCanPlay);
+      audio.removeEventListener("waiting", onWaiting);
+      audio.removeEventListener("playing", onPlaying);
+      audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("error", onError);
+    };
+  }, []);
+
+  // === RAF-BASED PROGRESS (ayah mode only) ===
+  useEffect(() => {
+    if (surahMode || !isPlaying || !currentSurah) {
+      if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = 0; }
       return;
     }
-
-    lastRafTimeRef.current = performance.now();
 
     const animate = () => {
       const audio = getActive();
       if (audio && !audio.paused && isFinite(audio.currentTime) && isFinite(audio.duration) && audio.duration > 0) {
         setCurrentAyahTime(audio.currentTime);
 
-        // Early preload: trigger when 80% through current ayah
         if (!earlyPreloadTriggeredRef.current && audio.currentTime / audio.duration > 0.8) {
           earlyPreloadTriggeredRef.current = true;
           const eng = engineRef.current;
@@ -267,7 +328,6 @@ export default function AudioPlayer() {
           if (nextAyah <= eng.totalAyahs) {
             const state = useAudioStore.getState();
             const inactiveSide = eng.activeSide === "A" ? "B" : "A";
-            // Only preload if not already loaded
             if (eng.loadedKey[inactiveSide] !== `${eng.surahNum}-${nextAyah}`) {
               loadIntoSide(inactiveSide, nextAyah, eng.surahNum, state.audioQuality, state.currentReciter);
             }
@@ -278,24 +338,15 @@ export default function AudioPlayer() {
     };
 
     rafRef.current = requestAnimationFrame(animate);
-    return () => {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = 0;
-      }
-    };
-  }, [isPlaying, currentSurah, surahNum]);
+    return () => { if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = 0; } };
+  }, [isPlaying, currentSurah, surahNum, surahMode]);
 
-  // Reset early preload flag when ayah changes
-  useEffect(() => {
-    earlyPreloadTriggeredRef.current = false;
-  }, [currentAyahInSurah]);
+  useEffect(() => { earlyPreloadTriggeredRef.current = false; }, [currentAyahInSurah]);
 
-  // Set up event handlers
+  // === AYAH-LEVEL EVENT HANDLERS ===
   useEffect(() => {
     const setupEvents = (audio: HTMLAudioElement, side: "A" | "B") => {
       const isActiveAudio = () => engineRef.current.activeSide === side;
-
       const onDurationChange = () => {
         if (isActiveAudio() && isFinite(audio.duration) && audio.duration > 0) {
           setCurrentAyahDuration(audio.duration);
@@ -304,25 +355,11 @@ export default function AudioPlayer() {
           if (idx >= 0) addAyahDuration(idx, audio.duration);
         }
       };
-      const onCanPlay = () => {
-        if (isActiveAudio()) setIsBuffering(false);
-      };
-      const onWaiting = () => {
-        if (isActiveAudio()) setIsBuffering(true);
-      };
-      const onPlaying = () => {
-        if (isActiveAudio()) {
-          setIsBuffering(false);
-          setIsPlaying(true);
-          engineRef.current.retryCount[side] = 0;
-        }
-      };
-      const onEnded = () => {
-        if (isActiveAudio()) handleAyahEnd();
-      };
-      const onError = () => {
-        if (isActiveAudio()) handleAudioError(side);
-      };
+      const onCanPlay = () => { if (isActiveAudio()) setIsBuffering(false); };
+      const onWaiting = () => { if (isActiveAudio()) setIsBuffering(true); };
+      const onPlaying = () => { if (isActiveAudio()) { setIsBuffering(false); setIsPlaying(true); engineRef.current.retryCount[side] = 0; } };
+      const onEnded = () => { if (isActiveAudio()) handleAyahEnd(); };
+      const onError = () => { if (isActiveAudio()) handleAudioError(side); };
 
       audio.addEventListener("durationchange", onDurationChange);
       audio.addEventListener("canplay", onCanPlay);
@@ -347,20 +384,31 @@ export default function AudioPlayer() {
     return () => cleanups.forEach((c) => c());
   }, []);
 
-  // Start playing when surah/ayah changes
+  // === START PLAYING (dispatches to correct engine) ===
   useEffect(() => {
     if (!currentSurah) return;
     const eng = engineRef.current;
     eng.totalAyahs = totalAyahsInSurah;
-    if (currentAyahInSurah !== eng.currentAyah || surahNum !== eng.surahNum) {
-      playAyah(currentAyahInSurah, surahNum, audioQuality, currentReciter);
+
+    if (surahMode) {
+      playSurahAudio(surahNum, currentReciter);
+    } else {
+      if (currentAyahInSurah !== eng.currentAyah || surahNum !== eng.surahNum) {
+        playAyah(currentAyahInSurah, surahNum, audioQuality, currentReciter);
+      }
     }
-  }, [currentAyahInSurah, surahNum, currentSurah, totalAyahsInSurah, audioQuality, currentReciter]);
+  }, [currentAyahInSurah, surahNum, currentSurah, totalAyahsInSurah, audioQuality, currentReciter, surahMode, playSurahAudio]);
 
   // Handle reciter/quality change
   useEffect(() => {
     if (!currentSurah) return;
     const eng = engineRef.current;
+
+    if (surahMode) {
+      playSurahAudio(surahNum, currentReciter);
+      return;
+    }
+
     const activeAudio = getActive();
     if (!activeAudio || !activeAudio.src) {
       playAyah(eng.currentAyah, eng.surahNum, audioQuality, currentReciter);
@@ -372,18 +420,20 @@ export default function AudioPlayer() {
       eng.loadedKey = { A: "", B: "" };
       playAyah(eng.currentAyah, eng.surahNum, audioQuality, currentReciter);
     }
-  }, [currentReciter, audioQuality]);
+  }, [currentReciter, audioQuality, surahMode, playSurahAudio]);
 
   // Sync play/pause
   useEffect(() => {
-    const audio = getActive();
-    if (!audio || !audio.src) return;
-    if (isPlaying) {
-      audio.play().catch(() => {});
+    if (surahMode) {
+      const audio = surahAudioRef.current;
+      if (!audio || !audio.src) return;
+      if (isPlaying) { audio.play().catch(() => {}); } else { audio.pause(); }
     } else {
-      audio.pause();
+      const audio = getActive();
+      if (!audio || !audio.src) return;
+      if (isPlaying) { audio.play().catch(() => {}); } else { audio.pause(); }
     }
-  }, [isPlaying]);
+  }, [isPlaying, surahMode]);
 
   // Volume
   useEffect(() => {
@@ -392,6 +442,7 @@ export default function AudioPlayer() {
     engineRef.current.muted = isMuted;
     if (audioARef.current) audioARef.current.volume = vol;
     if (audioBRef.current) audioBRef.current.volume = vol;
+    if (surahAudioRef.current) surahAudioRef.current.volume = vol;
   }, [volume, isMuted]);
 
   // Keyboard shortcuts
@@ -400,82 +451,91 @@ export default function AudioPlayer() {
       if (!isPlayerVisible || !currentSurah) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       switch (e.code) {
-        case "Space":
-          e.preventDefault();
-          togglePlay();
-          break;
-        case "ArrowLeft":
-          e.preventDefault();
-          prevSurah();
-          break;
-        case "ArrowRight":
-          e.preventDefault();
-          nextSurah();
-          break;
-        case "Escape":
-          e.preventDefault();
-          hidePlayer();
-          break;
+        case "Space": e.preventDefault(); togglePlay(); break;
+        case "ArrowLeft": e.preventDefault(); prevSurah(); break;
+        case "ArrowRight": e.preventDefault(); nextSurah(); break;
+        case "Escape": e.preventDefault(); hidePlayer(); break;
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isPlayerVisible, currentSurah, togglePlay, prevSurah, nextSurah, hidePlayer]);
 
-  // Stuck detection
+  // Stuck detection (ayah mode only)
   useEffect(() => {
-    if (!isPlaying || !currentSurah) return;
+    if (surahMode || !isPlaying || !currentSurah) return;
     const stuckTimer = setInterval(() => {
       const eng = engineRef.current;
       const audio = getActive();
       if (!audio || !audio.src) return;
-      if (audio.paused && !audio.ended) {
-        audio.play().catch(() => {});
-      } else if (audio.ended) {
-        if (!eng.isTransitioning) handleAyahEnd();
-      }
+      if (audio.paused && !audio.ended) { audio.play().catch(() => {}); }
+      else if (audio.ended) { if (!eng.isTransitioning) handleAyahEnd(); }
     }, 5000);
     return () => clearInterval(stuckTimer);
-  }, [isPlaying, currentSurah]);
+  }, [isPlaying, currentSurah, surahMode]);
 
+  // Progress bar click/touch handlers
   const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!currentSurah) return;
     const bar = e.currentTarget;
     const rect = bar.getBoundingClientRect();
     const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const targetAyah = Math.max(1, Math.ceil(ratio * totalAyahsInSurah));
-    seekToAyah(targetAyah);
-  }, [currentSurah, totalAyahsInSurah, seekToAyah]);
 
-  // Touch support for progress bar
+    if (surahMode) {
+      const audio = surahAudioRef.current;
+      if (audio && isFinite(audio.duration) && audio.duration > 0) {
+        audio.currentTime = ratio * audio.duration;
+      }
+    } else {
+      const targetAyah = Math.max(1, Math.ceil(ratio * totalAyahsInSurah));
+      seekToAyah(targetAyah);
+    }
+  }, [currentSurah, totalAyahsInSurah, seekToAyah, surahMode]);
+
   const handleProgressTouch = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     if (!currentSurah || !e.touches[0]) return;
     const bar = e.currentTarget;
     const rect = bar.getBoundingClientRect();
     const ratio = Math.max(0, Math.min(1, (e.touches[0].clientX - rect.left) / rect.width));
-    const targetAyah = Math.max(1, Math.ceil(ratio * totalAyahsInSurah));
-    seekToAyah(targetAyah);
-  }, [currentSurah, totalAyahsInSurah, seekToAyah]);
+
+    if (surahMode) {
+      const audio = surahAudioRef.current;
+      if (audio && isFinite(audio.duration) && audio.duration > 0) {
+        audio.currentTime = ratio * audio.duration;
+      }
+    } else {
+      const targetAyah = Math.max(1, Math.ceil(ratio * totalAyahsInSurah));
+      seekToAyah(targetAyah);
+    }
+  }, [currentSurah, totalAyahsInSurah, seekToAyah, surahMode]);
 
   if (!isPlayerVisible || !currentSurah) return null;
 
-  // Calculate surah-level progress — with estimated duration during transitions
-  const ayahProgress = currentAyahDuration > 0
-    ? Math.min(1, currentAyahTime / currentAyahDuration)
-    : 0;
+  // === PROGRESS CALCULATION ===
+  let surahProgressPercent = 0;
+  let displayPosition = "0:00";
+  let displayDuration = "0:00";
 
-  const surahProgressPercent =
-    totalAyahsInSurah > 0
-      ? ((currentAyahInSurah - 1 + ayahProgress) / totalAyahsInSurah) * 100
-      : 0;
-
-  const totalSurahTime = accumulatedTime + currentAyahDuration;
-  const surahPosition = accumulatedTime + currentAyahTime;
+  if (surahMode) {
+    surahProgressPercent = surahDuration > 0 ? (surahCurrentTime / surahDuration) * 100 : 0;
+    displayPosition = formatTime(surahCurrentTime);
+    displayDuration = formatTime(surahDuration);
+  } else {
+    const ayahProgress = currentAyahDuration > 0 ? Math.min(1, currentAyahTime / currentAyahDuration) : 0;
+    surahProgressPercent = totalAyahsInSurah > 0 ? ((currentAyahInSurah - 1 + ayahProgress) / totalAyahsInSurah) * 100 : 0;
+    const totalSurahTime = accumulatedTime + currentAyahDuration;
+    const surahPosition = accumulatedTime + currentAyahTime;
+    displayPosition = formatTime(surahPosition);
+    displayDuration = formatTime(totalSurahTime);
+  }
 
   return (
     <>
+      {/* Ayah-level audio elements */}
       <audio ref={audioARef} preload="auto" />
       <audio ref={audioBRef} preload="auto" />
+      {/* Surah-level audio element */}
+      <audio ref={surahAudioRef} preload="auto" />
 
       <div
         className="fixed bottom-0 left-0 right-0 z-50 border-t border-purple-500/20 safe-area-bottom"
@@ -485,7 +545,7 @@ export default function AudioPlayer() {
           WebkitBackdropFilter: "blur(20px)",
         }}
       >
-        {/* Surah-level progress bar — always visible */}
+        {/* Progress bar */}
         <div
           className="w-full h-1 sm:h-1.5 cursor-pointer group relative touch-none"
           onClick={handleProgressClick}
@@ -501,14 +561,11 @@ export default function AudioPlayer() {
           />
           <div
             className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-amber-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg shadow-amber-400/50"
-            style={{
-              left: `${Math.min(100, surahProgressPercent)}%`,
-              marginLeft: "-5px",
-            }}
+            style={{ left: `${Math.min(100, surahProgressPercent)}%`, marginLeft: "-5px" }}
           />
         </div>
 
-        {/* Main controls row — compact on mobile */}
+        {/* Controls */}
         <div className="flex items-center gap-1.5 sm:gap-4 px-2 sm:px-6 py-2 sm:py-3 max-w-screen-xl mx-auto">
           {/* Left: Surah info + wave */}
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
@@ -520,9 +577,15 @@ export default function AudioPlayer() {
                 <span className="text-[10px] sm:text-xs text-muted-foreground truncate hidden sm:inline">{currentSurah.englishName}</span>
               </div>
               <div className="text-[10px] sm:text-[11px] text-muted-foreground tabular-nums">
-                {currentAyahInSurah}/{totalAyahsInSurah}
-                {totalSurahTime > 0 && (
-                  <span className="hidden sm:inline"> &middot; {formatTime(surahPosition)}/{formatTime(totalSurahTime)}</span>
+                {surahMode ? (
+                  <span>{displayPosition}/{displayDuration}</span>
+                ) : (
+                  <>
+                    {currentAyahInSurah}/{totalAyahsInSurah}
+                    {(accumulatedTime + currentAyahDuration) > 0 && (
+                      <span className="hidden sm:inline"> &middot; {displayPosition}/{displayDuration}</span>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -549,16 +612,9 @@ export default function AudioPlayer() {
 
           {/* Right: Volume + Close */}
           <div className="flex items-center gap-1 sm:gap-3 flex-1 justify-end">
-            {/* Mobile: tap to toggle mute */}
-            <button
-              onClick={() => setIsMuted(!isMuted)}
-              className="sm:hidden p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label={isMuted ? "Unmute" : "Mute"}
-            >
+            <button onClick={() => setIsMuted(!isMuted)} className="sm:hidden p-1.5 text-muted-foreground hover:text-foreground transition-colors" aria-label={isMuted ? "Unmute" : "Mute"}>
               {isMuted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>
-
-            {/* Desktop: volume slider */}
             <div className="hidden sm:flex items-center gap-2">
               <button onClick={() => setIsMuted(!isMuted)} className="text-muted-foreground hover:text-foreground transition-colors" aria-label={isMuted ? "Unmute" : "Mute"}>
                 {isMuted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}

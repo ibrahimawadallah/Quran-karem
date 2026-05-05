@@ -131,6 +131,8 @@ export const RECITERS: Reciter[] = [
   { id: "ar.ahmedajamy", name: "Ahmed Al-Ajamy", arabicName: "أحمد العجمي", country: "Saudi Arabia", category: "Egyptian", style: "Murattal" },
   // Saudi
   { id: "ar.hudhaify", name: "Ali Al-Hudhaify", arabicName: "علي الحذيفي", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
+  // Special — surah-level audio source (mp3quran.net)
+  { id: "afs", name: "Abd Al-Baset Abd Al-Samad", arabicName: "عبد الباسط عبد الصمد", country: "Egypt", category: "Popular", style: "Murattal", audioSource: "surah", audioBaseUrl: "https://server8.mp3quran.net/afs", audioPrefix: "afs" },
 ];
 
 export const AUDIO_QUALITIES: AudioQuality[] = [
