@@ -18,7 +18,7 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   title: "Qalam - Quran Kareem",
   description:
-    "Qalam (قَلَم) - A premium Quran Kareem streaming application. Listen to the Holy Quran recited by world-renowned Qaris with beautiful audio streaming, reading mode, and more.",
+    "Qalam (قَلَم) - A premium Quran Kareem streaming application by MedTechAI Arab Organization. Listen to the Holy Quran recited by world-renowned Qaris with beautiful gapless audio streaming, reading mode, and more.",
   keywords: [
     "Quran",
     "Quran Kareem",
@@ -27,13 +27,11 @@ export const metadata: Metadata = {
     "Quran Streaming",
     "Qari",
     "Recitation",
+    "MedTechAI",
   ],
-  icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
-  },
   openGraph: {
     title: "Qalam - Quran Kareem",
-    description: "A premium Quran Kareem streaming application",
+    description: "A premium Quran Kareem streaming application by MedTechAI Arab Organization",
     type: "website",
   },
 };

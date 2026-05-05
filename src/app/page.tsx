@@ -1,5 +1,6 @@
 'use client';
 
+import Header from '@/components/header';
 import HeroSection from '@/components/hero-section';
 import FilterBar from '@/components/filter-bar';
 import SurahList from '@/components/surah-list';
@@ -31,6 +32,9 @@ export default function Home() {
 
       {/* Main content */}
       <div className="relative z-10 flex flex-col min-h-screen">
+        {/* Header / Navbar */}
+        <Header />
+
         {/* Hero Section */}
         <HeroSection />
 
