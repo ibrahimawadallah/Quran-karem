@@ -56,3 +56,26 @@ Stage Summary:
 - Surah-level progress bar replaces per-ayah progress
 - Header error fixed by adding missing store methods for filter bar
 - Timing state moved to Zustand store to comply with React 19 strict mode
+
+---
+Task ID: 5
+Agent: Main Orchestrator
+Task: Fix gaps between ayahs during audio playback
+
+Work Log:
+- Identified root cause: single <audio> element with src-swap between ayahs causes ~200-500ms gap during React re-render + audio load cycle
+- Implemented dual-audio ping-pong engine for truly gapless playback:
+  - Two <audio> elements (A and B) alternate as active/inactive
+  - While active side plays ayah N, inactive side preloads ayah N+1
+  - When ayah N ends, engine immediately swaps to inactive side and calls play() — zero React delay
+  - Then preloads ayah N+2 onto the now-inactive side
+- Moved all audio engine logic to imperative ref-based functions (not useCallback) to avoid React Compiler issues
+- Engine tracks loaded state per side via "surahNum-ayahNum" keys to avoid redundant loading
+- playAyah() checks if target ayah is already loaded on either side and swaps if needed
+- All store timing updates (advanceToNextAyah) happen AFTER audio is already playing — UI updates are non-blocking
+- Lint: 0 errors, 1 expected warning
+
+Stage Summary:
+- Audio playback is now gapless between ayahs using dual-audio ping-pong technique
+- Next ayah is preloaded while current one plays, so transitions are instant
+- Engine is fully imperative (ref-based) to avoid React re-render delays
