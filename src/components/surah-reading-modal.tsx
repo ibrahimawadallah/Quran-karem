@@ -23,6 +23,7 @@ export default function SurahReadingModal() {
     playSurah,
     isPlaying,
     currentSurah,
+    currentAyahInSurah,
     pauseAudio,
     resumeAudio,
     togglePlay,
@@ -32,9 +33,15 @@ export default function SurahReadingModal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const cacheRef = useRef<Map<number, SurahText>>(new Map());
+  const ayahRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const hasScrolledRef = useRef(false);
 
   const surahInfo = readingModalSurah ?? getSurahInfo(surahModalNumber);
   const surahNumber = readingModalSurah?.number ?? surahModalNumber;
+
+  // Is this modal viewing the same surah that's currently playing?
+  const isViewingPlayingSurah = currentSurah?.number === surahNumber;
 
   const fetchSurahText = useCallback(async () => {
     if (!surahNumber) return;
@@ -70,6 +77,19 @@ export default function SurahReadingModal() {
       fetchSurahText();
     }
   }, [showSurahModal, surahNumber, fetchSurahText]);
+
+  // Auto-scroll to the current playing ayah when it changes
+  useEffect(() => {
+    if (!isViewingPlayingSurah || !isPlaying || !surahText) return;
+
+    const ayahEl = ayahRefs.current.get(currentAyahInSurah);
+    if (ayahEl && scrollContainerRef.current) {
+      ayahEl.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }, [currentAyahInSurah, isViewingPlayingSurah, isPlaying, surahText]);
 
   const handlePlayToggle = () => {
     if (!surahInfo) return;
@@ -117,6 +137,17 @@ export default function SurahReadingModal() {
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Now playing indicator */}
+              {isViewingPlayingSurah && isPlaying && (
+                <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
+                  </span>
+                  Ayah {currentAyahInSurah}
+                </span>
+              )}
+
               {/* Play/Pause button */}
               <button
                 onClick={handlePlayToggle}
@@ -161,6 +192,7 @@ export default function SurahReadingModal() {
 
         {/* Content area */}
         <div
+          ref={scrollContainerRef}
           className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 max-h-[60vh]"
           style={{
             scrollbarWidth: "thin",
@@ -198,38 +230,59 @@ export default function SurahReadingModal() {
 
           {/* Ayah list */}
           {surahText && !loading && !error && (
-            <div className="space-y-5">
+            <div className="space-y-3">
               {surahText.arabicAyahs.map((ayah: AyahText, index: number) => {
                 const englishAyah = surahText.englishAyahs[index];
-                // Surah 1 (Al-Fatiha), first ayah gets special amber highlight
                 const isBasmalaAyah =
                   surahNumber === 1 && ayah.numberInSurah === 1;
+
+                // Is this the currently playing ayah?
+                const isCurrentPlayingAyah =
+                  isViewingPlayingSurah &&
+                  isPlaying &&
+                  currentAyahInSurah === ayah.numberInSurah;
 
                 return (
                   <div
                     key={ayah.number}
-                    className={`group rounded-lg p-3 transition-colors ${
-                      isBasmalaAyah
+                    ref={(el) => {
+                      if (el) ayahRefs.current.set(ayah.numberInSurah, el);
+                    }}
+                    className={`group rounded-lg p-3 transition-all duration-300 ${
+                      isCurrentPlayingAyah
+                        ? "bg-amber-500/15 border border-amber-500/30 shadow-lg shadow-amber-500/10"
+                        : isBasmalaAyah
                         ? "bg-amber-500/10 border border-amber-500/20"
-                        : "hover:bg-white/5"
+                        : "hover:bg-white/5 border border-transparent"
                     }`}
                   >
                     {/* Ayah number badge + Arabic text */}
                     <div className="flex items-start gap-3">
                       {/* Circular number badge */}
                       <div
-                        className={`flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold border ${
-                          isBasmalaAyah
+                        className={`flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold border transition-all duration-300 ${
+                          isCurrentPlayingAyah
+                            ? "bg-amber-500/30 text-amber-300 border-amber-400/50 shadow-md shadow-amber-500/20"
+                            : isBasmalaAyah
                             ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
                             : "bg-purple-600/20 text-purple-300 border-purple-500/30"
                         }`}
                       >
-                        {ayah.numberInSurah}
+                        {isCurrentPlayingAyah ? (
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
+                          </span>
+                        ) : (
+                          ayah.numberInSurah
+                        )}
                       </div>
 
                       {/* Arabic text */}
                       <p
-                        className="text-white/90 leading-[2.2] flex-1"
+                        className={`leading-[2.2] flex-1 transition-colors duration-300 ${
+                          isCurrentPlayingAyah ? "text-amber-100" : "text-white/90"
+                        }`}
                         style={{
                           fontFamily:
                             "'Scheherazade New', 'Traditional Arabic', serif",
@@ -239,7 +292,9 @@ export default function SurahReadingModal() {
                         }}
                       >
                         {ayah.text}
-                        <span className="inline-block mx-1 text-amber-500/60 text-base">
+                        <span className={`inline-block mx-1 text-base ${
+                          isCurrentPlayingAyah ? "text-amber-400/80" : "text-amber-500/60"
+                        }`}>
                           ﴿{ayah.numberInSurah}﴾
                         </span>
                       </p>
@@ -247,7 +302,9 @@ export default function SurahReadingModal() {
 
                     {/* English translation */}
                     {englishAyah && (
-                      <p className="text-gray-400 text-sm leading-relaxed mt-2 ml-11">
+                      <p className={`text-sm leading-relaxed mt-2 ml-11 transition-colors duration-300 ${
+                        isCurrentPlayingAyah ? "text-amber-200/70" : "text-gray-400"
+                      }`}>
                         {englishAyah.text}
                       </p>
                     )}

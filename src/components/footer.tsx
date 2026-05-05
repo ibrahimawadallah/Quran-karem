@@ -1,385 +1,96 @@
 "use client";
 
-import React, { useState } from "react";
-import {
-  PenTool,
-  Heart,
-  BookOpen,
-  Github,
-  Mail,
-  Phone,
-  Info,
-  ExternalLink,
-  Shield,
-  Globe,
-  MessageSquare,
-} from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import React from "react";
+import { PenTool, BookOpen, Info } from "lucide-react";
 import { useAudioStore } from "@/lib/audio-store";
 
-/** About Qalam modal */
-function AboutModal({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="border-purple-900/30 sm:max-w-lg"
-        style={{
-          background: "rgba(15, 10, 30, 0.95)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-        }}
-      >
-        <DialogHeader>
-          <DialogTitle className="text-white text-lg flex items-center gap-2">
-            <Info className="w-5 h-5 text-amber-400" />
-            About Qalam
-          </DialogTitle>
-          <DialogDescription className="text-gray-400 text-sm">
-            Learn more about the Qalam project
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-5 mt-2">
-          {/* Brand */}
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
-              <PenTool className="w-6 h-6 text-[#0a0518]" />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-white">Qalam</h3>
-              <p className="text-amber-400 text-sm arabic-name">قَلَم</p>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div className="space-y-3">
-            <p className="text-gray-300 text-sm leading-relaxed">
-              <strong className="text-white">Qalam</strong> is a premium Quran
-              Kareem streaming application designed to provide Muslims worldwide
-              with a beautiful, immersive experience for listening to and reading
-              the Holy Quran.
-            </p>
-            <p className="text-gray-300 text-sm leading-relaxed">
-              Featuring high-quality audio recitations from world-renowned Qaris,
-              gapless playback technology, and a full Arabic text with English
-              translation — Qalam brings the words of Allah closer to your heart.
-            </p>
-          </div>
-
-          {/* Authority badge */}
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Shield className="w-4 h-4 text-amber-400" />
-              <span className="text-amber-400 font-semibold text-sm">
-                Under the Authority of
-              </span>
-            </div>
-            <p className="text-white font-bold text-base">
-              MedTechAI Arab Organization
-            </p>
-            <p className="text-gray-400 text-xs mt-1">
-              A registered organization dedicated to leveraging technology for
-              the service of Islam and the Muslim Ummah.
-            </p>
-          </div>
-
-          {/* Features */}
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { icon: BookOpen, label: "114 Surahs", desc: "Complete Quran" },
-              {
-                icon: MessageSquare,
-                label: "10+ Reciters",
-                desc: "World-renowned Qaris",
-              },
-              { icon: Globe, label: "Multi-quality", desc: "64/128/192 kbps" },
-              {
-                icon: Heart,
-                label: "Free Forever",
-                desc: "No ads, no subscriptions",
-              },
-            ].map((feature, i) => (
-              <div
-                key={i}
-                className="flex items-start gap-2 p-2.5 rounded-lg bg-white/5"
-              >
-                <feature.icon className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-white text-xs font-medium">
-                    {feature.label}
-                  </p>
-                  <p className="text-gray-500 text-[11px]">{feature.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Quranic verse */}
-          <div className="text-center pt-2 border-t border-white/10">
-            <p
-              className="text-amber-400/80 text-lg basmala-glow"
-              style={{
-                fontFamily: "'Scheherazade New', 'Traditional Arabic', serif",
-                direction: "rtl",
-              }}
-            >
-              إِنَّا نَحْنُ نَزَّلْنَا ٱلذِّكْرَ وَإِنَّا لَهُۥ لَحَـٰفِظُونَ
-            </p>
-            <p className="text-gray-500 text-[11px] mt-1 italic">
-              &ldquo;Indeed, it is We who sent down the Quran and indeed, We will
-              be its guardian.&rdquo; — Surah Al-Hijr 15:9
-            </p>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/** Contact / Suggestions modal */
-function ContactModal({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="border-purple-900/30 sm:max-w-md"
-        style={{
-          background: "rgba(15, 10, 30, 0.95)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-        }}
-      >
-        <DialogHeader>
-          <DialogTitle className="text-white text-lg flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-amber-400" />
-            Contact &amp; Suggestions
-          </DialogTitle>
-          <DialogDescription className="text-gray-400 text-sm">
-            We value your feedback and suggestions
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-5 mt-2">
-          <p className="text-gray-300 text-sm leading-relaxed">
-            Have a suggestion, report a bug, or want to contribute? We&apos;d love
-            to hear from you. Qalam is built for the Ummah, and your input helps
-            us improve.
-          </p>
-
-          {/* Contact cards */}
-          <div className="space-y-3">
-            {/* Email */}
-            <a
-              href="mailto:support@medtechai.net"
-              className="flex items-center gap-4 p-4 rounded-xl border border-purple-500/20 bg-white/5 hover:bg-white/10 hover:border-amber-500/30 transition-all group"
-            >
-              <div className="w-11 h-11 rounded-full bg-amber-500/10 flex items-center justify-center group-hover:bg-amber-500/20 transition-colors">
-                <Mail className="w-5 h-5 text-amber-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-medium">Email Support</p>
-                <p className="text-amber-400 text-sm truncate">
-                  support@medtechai.net
-                </p>
-              </div>
-              <ExternalLink className="w-4 h-4 text-gray-500 group-hover:text-amber-400 transition-colors" />
-            </a>
-
-            {/* Phone */}
-            <a
-              href="tel:+971525397947"
-              className="flex items-center gap-4 p-4 rounded-xl border border-purple-500/20 bg-white/5 hover:bg-white/10 hover:border-amber-500/30 transition-all group"
-            >
-              <div className="w-11 h-11 rounded-full bg-amber-500/10 flex items-center justify-center group-hover:bg-amber-500/20 transition-colors">
-                <Phone className="w-5 h-5 text-amber-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-medium">Phone / WhatsApp</p>
-                <p className="text-amber-400 text-sm">+971 52 539 7947</p>
-              </div>
-              <ExternalLink className="w-4 h-4 text-gray-500 group-hover:text-amber-400 transition-colors" />
-            </a>
-          </div>
-
-          {/* Org info */}
-          <div className="rounded-xl border border-purple-500/15 bg-purple-500/5 p-3 text-center">
-            <p className="text-gray-400 text-xs">
-              Qalam is a project under the{" "}
-              <span className="text-white font-medium">
-                MedTechAI Arab Organization
-              </span>
-            </p>
-            <p className="text-gray-500 text-[11px] mt-1">
-              For any suggestions or reports, please reach out through the
-              channels above.
-            </p>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export default function Footer() {
-  const [showAbout, setShowAbout] = useState(false);
-  const [showContact, setShowContact] = useState(false);
   const { toggleReciterPanel } = useAudioStore();
 
   return (
-    <>
-      <footer className="mt-auto border-t border-purple-500/10 bg-[rgba(10,5,24,0.8)] backdrop-blur-xl">
-        <div className="max-w-6xl mx-auto px-4 py-8">
-          {/* Top section */}
-          <div className="flex flex-col items-center text-center mb-6">
-            {/* Brand */}
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
-                <PenTool className="w-4 h-4 text-[#0a0518]" />
-              </div>
-              <span
-                className="text-lg font-bold bg-gradient-to-r from-amber-300 to-amber-500 bg-clip-text text-transparent"
-                style={{
-                  fontFamily:
-                    'var(--font-space-grotesk), "Space Grotesk", sans-serif',
-                }}
-              >
-                Qalam
-              </span>
+    <footer className="mt-auto border-t border-purple-500/10 bg-[rgba(10,5,24,0.8)] backdrop-blur-xl">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Top section */}
+        <div className="flex flex-col items-center text-center mb-6">
+          {/* Brand */}
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
+              <PenTool className="w-4 h-4 text-[#0a0518]" />
             </div>
-
-            {/* Quranic verse */}
-            <p
-              className="arabic-name text-lg text-amber-400/80 basmala-glow mb-1"
-              style={{ direction: "rtl" }}
-            >
-              إِنَّا نَحْنُ نَزَّلْنَا ٱلذِّكْرَ وَإِنَّا لَهُۥ لَحَـٰفِظُونَ
-            </p>
-            <p className="text-xs text-muted-foreground italic max-w-md">
-              &ldquo;Indeed, it is We who sent down the Quran and indeed, We will
-              be its guardian.&rdquo; — Surah Al-Hijr 15:9
-            </p>
-          </div>
-
-          {/* Links row */}
-          <div className="flex items-center justify-center gap-4 sm:gap-6 mb-6 flex-wrap">
-            <button
-              onClick={() => {
-                window.scrollTo({ top: 0, behavior: "smooth" });
+            <span
+              className="text-lg font-bold bg-gradient-to-r from-amber-300 to-amber-500 bg-clip-text text-transparent"
+              style={{
+                fontFamily:
+                  'var(--font-space-grotesk), "Space Grotesk", sans-serif',
               }}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-amber-400 transition-colors"
             >
-              <BookOpen className="w-4 h-4" />
-              Quran
-            </button>
-            <button
-              onClick={() => setShowAbout(true)}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-amber-400 transition-colors"
-            >
-              <Info className="w-4 h-4" />
-              About
-            </button>
-            <button
-              onClick={() => setShowContact(true)}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-amber-400 transition-colors"
-            >
-              <Heart className="w-4 h-4" />
-              Contact
-            </button>
-            <button
-              onClick={toggleReciterPanel}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-amber-400 transition-colors"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
-                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-              </svg>
-              Reciters
-            </button>
-            <a
-              href="https://github.com/ibrahimawadallah/qalam"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-amber-400 transition-colors"
-            >
-              <Github className="w-4 h-4" />
-              Source
-            </a>
+              Qalam
+            </span>
           </div>
 
-          {/* Contact info row */}
-          <div className="flex items-center justify-center gap-4 sm:gap-6 mb-6 flex-wrap">
-            <a
-              href="mailto:support@medtechai.net"
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-amber-400 transition-colors"
-            >
-              <Mail className="w-3.5 h-3.5" />
-              support@medtechai.net
-            </a>
-            <a
-              href="tel:+971525397947"
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-amber-400 transition-colors"
-            >
-              <Phone className="w-3.5 h-3.5" />
-              +971 52 539 7947
-            </a>
-          </div>
+          {/* Quranic verse */}
+          <p
+            className="arabic-name text-lg text-amber-400/80 basmala-glow mb-1"
+            style={{ direction: "rtl" }}
+          >
+            إِنَّا نَحْنُ نَزَّلْنَا ٱلذِّكْرَ وَإِنَّا لَهُۥ لَحَـٰفِظُونَ
+          </p>
+          <p className="text-xs text-muted-foreground italic max-w-md">
+            &ldquo;Indeed, it is We who sent down the Quran and indeed, We will
+            be its guardian.&rdquo; — Surah Al-Hijr 15:9
+          </p>
+        </div>
 
-          {/* Divider */}
-          <div className="border-t border-purple-500/10 pt-4">
-            <div className="flex flex-col items-center gap-2">
-              <p className="text-center text-xs text-muted-foreground">
-                © {new Date().getFullYear()} Qalam — Quran Kareem Streaming App.
-                Under the authority of{" "}
-                <span className="text-amber-400/80 font-medium">
-                  MedTechAI Arab Organization
-                </span>
-              </p>
-              <p className="text-center text-[11px] text-gray-600">
-                For any suggestions or reports, contact{" "}
-                <a
-                  href="mailto:support@medtechai.net"
-                  className="text-amber-400/60 hover:text-amber-400 transition-colors"
-                >
-                  support@medtechai.net
-                </a>{" "}
-                or{" "}
-                <a
-                  href="tel:+971525397947"
-                  className="text-amber-400/60 hover:text-amber-400 transition-colors"
-                >
-                  +971 52 539 7947
-                </a>
-              </p>
-            </div>
+        {/* Links row */}
+        <div className="flex items-center justify-center gap-4 sm:gap-6 mb-6 flex-wrap">
+          <button
+            onClick={() => {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-amber-400 transition-colors"
+          >
+            <BookOpen className="w-4 h-4" />
+            Quran
+          </button>
+          <button
+            onClick={() => {
+              // Trigger the About modal from header by dispatching a custom event
+              window.dispatchEvent(new CustomEvent("open-about"));
+            }}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-amber-400 transition-colors"
+          >
+            <Info className="w-4 h-4" />
+            About
+          </button>
+          <button
+            onClick={toggleReciterPanel}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-amber-400 transition-colors"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+              <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+            </svg>
+            Reciters
+          </button>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-purple-500/10 pt-4">
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-center text-xs text-muted-foreground">
+              © {new Date().getFullYear()} Qalam — Quran Kareem Streaming App.
+              Under the authority of{" "}
+              <span className="text-amber-400/80 font-medium">
+                MedTechAI Arab Organization
+              </span>
+            </p>
           </div>
         </div>
-      </footer>
-
-      {/* Modals */}
-      <AboutModal open={showAbout} onOpenChange={setShowAbout} />
-      <ContactModal open={showContact} onOpenChange={setShowContact} />
-    </>
+      </div>
+    </footer>
   );
 }

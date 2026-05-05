@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   PenTool,
   BookOpen,
   Info,
   Heart,
-  Github,
   Menu,
   X,
   Mail,
@@ -24,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAudioStore } from "@/lib/audio-store";
 
-/** About Qalam modal */
+/** About Qalam modal — includes contact info */
 function AboutModal({
   open,
   onOpenChange,
@@ -35,11 +34,13 @@ function AboutModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="border-purple-900/30 sm:max-w-lg"
+        className="border-purple-900/30 sm:max-w-lg max-h-[85vh] overflow-y-auto"
         style={{
           background: "rgba(15, 10, 30, 0.95)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
+          scrollbarWidth: "thin",
+          scrollbarColor: "rgba(139, 92, 246, 0.3) transparent",
         }}
       >
         <DialogHeader>
@@ -127,6 +128,53 @@ function AboutModal({
             ))}
           </div>
 
+          {/* Contact & Suggestions */}
+          <div className="space-y-3 pt-2 border-t border-white/10">
+            <h4 className="text-white text-sm font-semibold flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-amber-400" />
+              Contact &amp; Suggestions
+            </h4>
+            <p className="text-gray-400 text-xs leading-relaxed">
+              For any suggestions, reports, or inquiries, please reach out to us:
+            </p>
+
+            <div className="space-y-2.5">
+              {/* Email */}
+              <a
+                href="mailto:support@medtechai.net"
+                className="flex items-center gap-3 p-3 rounded-xl border border-purple-500/20 bg-white/5 hover:bg-white/10 hover:border-amber-500/30 transition-all group"
+              >
+                <div className="w-9 h-9 rounded-full bg-amber-500/10 flex items-center justify-center group-hover:bg-amber-500/20 transition-colors">
+                  <Mail className="w-4 h-4 text-amber-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-xs font-medium">Email Support</p>
+                  <p className="text-amber-400 text-sm truncate">
+                    support@medtechai.net
+                  </p>
+                </div>
+                <ExternalLink className="w-3.5 h-3.5 text-gray-500 group-hover:text-amber-400 transition-colors" />
+              </a>
+
+              {/* Phone */}
+              <a
+                href="tel:+971525397947"
+                className="flex items-center gap-3 p-3 rounded-xl border border-purple-500/20 bg-white/5 hover:bg-white/10 hover:border-amber-500/30 transition-all group"
+              >
+                <div className="w-9 h-9 rounded-full bg-amber-500/10 flex items-center justify-center group-hover:bg-amber-500/20 transition-colors">
+                  <Phone className="w-4 h-4 text-amber-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-xs font-medium">
+                    Phone / WhatsApp
+                  </p>
+                  <p className="text-amber-400 text-sm">+971 52 539 7947</p>
+                </div>
+                <ExternalLink className="w-3.5 h-3.5 text-gray-500 group-hover:text-amber-400 transition-colors" />
+              </a>
+            </div>
+          </div>
+
           {/* Quranic verse */}
           <div className="text-center pt-2 border-t border-white/10">
             <p
@@ -149,102 +197,17 @@ function AboutModal({
   );
 }
 
-/** Contact / Suggestions modal */
-function ContactModal({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="border-purple-900/30 sm:max-w-md"
-        style={{
-          background: "rgba(15, 10, 30, 0.95)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-        }}
-      >
-        <DialogHeader>
-          <DialogTitle className="text-white text-lg flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-amber-400" />
-            Contact &amp; Suggestions
-          </DialogTitle>
-          <DialogDescription className="text-gray-400 text-sm">
-            We value your feedback and suggestions
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-5 mt-2">
-          <p className="text-gray-300 text-sm leading-relaxed">
-            Have a suggestion, report a bug, or want to contribute? We&apos;d love
-            to hear from you. Qalam is built for the Ummah, and your input helps
-            us improve.
-          </p>
-
-          {/* Contact cards */}
-          <div className="space-y-3">
-            {/* Email */}
-            <a
-              href="mailto:support@medtechai.net"
-              className="flex items-center gap-4 p-4 rounded-xl border border-purple-500/20 bg-white/5 hover:bg-white/10 hover:border-amber-500/30 transition-all group"
-            >
-              <div className="w-11 h-11 rounded-full bg-amber-500/10 flex items-center justify-center group-hover:bg-amber-500/20 transition-colors">
-                <Mail className="w-5 h-5 text-amber-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-medium">Email Support</p>
-                <p className="text-amber-400 text-sm truncate">
-                  support@medtechai.net
-                </p>
-              </div>
-              <ExternalLink className="w-4 h-4 text-gray-500 group-hover:text-amber-400 transition-colors" />
-            </a>
-
-            {/* Phone */}
-            <a
-              href="tel:+971525397947"
-              className="flex items-center gap-4 p-4 rounded-xl border border-purple-500/20 bg-white/5 hover:bg-white/10 hover:border-amber-500/30 transition-all group"
-            >
-              <div className="w-11 h-11 rounded-full bg-amber-500/10 flex items-center justify-center group-hover:bg-amber-500/20 transition-colors">
-                <Phone className="w-5 h-5 text-amber-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-medium">
-                  Phone / WhatsApp
-                </p>
-                <p className="text-amber-400 text-sm">+971 52 539 7947</p>
-              </div>
-              <ExternalLink className="w-4 h-4 text-gray-500 group-hover:text-amber-400 transition-colors" />
-            </a>
-          </div>
-
-          {/* Org info */}
-          <div className="rounded-xl border border-purple-500/15 bg-purple-500/5 p-3 text-center">
-            <p className="text-gray-400 text-xs">
-              Qalam is a project under the{" "}
-              <span className="text-white font-medium">
-                MedTechAI Arab Organization
-              </span>
-            </p>
-            <p className="text-gray-500 text-[11px] mt-1">
-              For any suggestions or reports, please reach out through the
-              channels above.
-            </p>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export default function Header() {
   const [showAbout, setShowAbout] = useState(false);
-  const [showContact, setShowContact] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { toggleReciterPanel } = useAudioStore();
+
+  // Listen for custom event from footer's About link
+  useEffect(() => {
+    const handler = () => setShowAbout(true);
+    window.addEventListener("open-about", handler);
+    return () => window.removeEventListener("open-about", handler);
+  }, []);
 
   return (
     <>
@@ -285,13 +248,6 @@ export default function Header() {
               About
             </button>
             <button
-              onClick={() => setShowContact(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 transition-all"
-            >
-              <Heart className="w-4 h-4" />
-              Contact
-            </button>
-            <button
               onClick={toggleReciterPanel}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 transition-all"
             >
@@ -305,15 +261,6 @@ export default function Header() {
               </svg>
               Reciters
             </button>
-            <a
-              href="https://github.com/ibrahimawadallah/qalam"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 transition-all"
-            >
-              <Github className="w-4 h-4" />
-              Source
-            </a>
           </nav>
 
           {/* Mobile menu button */}
@@ -355,16 +302,6 @@ export default function Header() {
             </button>
             <button
               onClick={() => {
-                setShowContact(true);
-                setMobileMenuOpen(false);
-              }}
-              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 transition-all"
-            >
-              <Heart className="w-4 h-4" />
-              Contact &amp; Suggestions
-            </button>
-            <button
-              onClick={() => {
                 toggleReciterPanel();
                 setMobileMenuOpen(false);
               }}
@@ -380,40 +317,12 @@ export default function Header() {
               </svg>
               Reciters
             </button>
-            <a
-              href="https://github.com/ibrahimawadallah/qalam"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10 transition-all"
-            >
-              <Github className="w-4 h-4" />
-              Source Code
-            </a>
-
-            {/* Mobile contact info */}
-            <div className="pt-2 mt-2 border-t border-purple-500/10 space-y-2 px-3">
-              <a
-                href="mailto:support@medtechai.net"
-                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-amber-400 transition-colors"
-              >
-                <Mail className="w-3.5 h-3.5" />
-                support@medtechai.net
-              </a>
-              <a
-                href="tel:+971525397947"
-                className="flex items-center gap-2 text-xs text-muted-foreground hover:text-amber-400 transition-colors"
-              >
-                <Phone className="w-3.5 h-3.5" />
-                +971 52 539 7947
-              </a>
-            </div>
           </div>
         )}
       </header>
 
       {/* Modals */}
       <AboutModal open={showAbout} onOpenChange={setShowAbout} />
-      <ContactModal open={showContact} onOpenChange={setShowContact} />
     </>
   );
 }
