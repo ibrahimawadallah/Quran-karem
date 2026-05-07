@@ -280,8 +280,6 @@ export const useAudioStore = create<AudioState>((set, get) => {
       })),
   };
 });
-
-    },
     meccanCount,
     medinanCount,
     reciter: RECITERS[0],
