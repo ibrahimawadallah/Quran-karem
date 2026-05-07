@@ -30,6 +30,9 @@ export const metadata: Metadata = {
     "MedTechAI",
   ],
   metadataBase: new URL("https://quran.medtechai.net"),
+  icons: {
+    icon: "/favicon.png",
+  },
   openGraph: {
     title: "Qalam - Quran Kareem",
     description: "A premium Quran Kareem streaming application by MedTechAI Arab Organization",

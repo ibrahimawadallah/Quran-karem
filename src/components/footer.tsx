@@ -1,6 +1,7 @@
 'use client';
 
-import { PenTool, Heart, BookOpen, Shield } from 'lucide-react';
+import Image from 'next/image';
+import { Heart, BookOpen, Shield } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -8,10 +9,16 @@ export default function Footer() {
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Top section */}
         <div className="flex flex-col items-center text-center mb-6">
-          {/* Brand */}
+          {/* Brand with mushaf logo */}
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
-              <PenTool className="w-4 h-4 text-[#0a0518]" />
+            <div className="w-8 h-8 rounded-lg overflow-hidden ring-1 ring-amber-500/30">
+              <Image
+                src="/mushaf-logo.png"
+                alt="Qalam"
+                width={32}
+                height={32}
+                className="w-full h-full object-cover"
+              />
             </div>
             <span
               className="text-lg font-bold bg-gradient-to-r from-amber-300 to-amber-500 bg-clip-text text-transparent"

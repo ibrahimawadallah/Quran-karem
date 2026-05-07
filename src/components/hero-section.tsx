@@ -1,6 +1,6 @@
 'use client';
 
-import { PenTool } from 'lucide-react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAudioStore } from '@/lib/audio-store';
@@ -17,10 +17,17 @@ export default function HeroSection() {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] bg-amber-500/10 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="relative z-10 max-w-4xl mx-auto px-4 text-center">
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-2.5 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
-            <PenTool className="w-5 h-5 text-[#0a0518]" />
+        {/* Logo with mushaf image */}
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <div className="w-12 h-12 rounded-xl overflow-hidden shadow-lg shadow-amber-500/20 ring-2 ring-amber-500/30">
+            <Image
+              src="/mushaf-logo.png"
+              alt="Qalam - Quran Mushaf"
+              width={48}
+              height={48}
+              className="w-full h-full object-cover"
+              priority
+            />
           </div>
           <span
             className="text-2xl font-bold bg-gradient-to-r from-amber-300 to-amber-500 bg-clip-text text-transparent"
