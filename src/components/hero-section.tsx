@@ -21,7 +21,7 @@ export default function HeroSection() {
         <div className="flex items-center justify-center gap-3 mb-6">
           <div className="w-12 h-12 rounded-xl overflow-hidden shadow-lg shadow-amber-500/20 ring-2 ring-amber-500/30">
             <Image
-              src="/mushaf-logo.png"
+              src="/mushaf-logo.jpg"
               alt="Qalam - Quran Mushaf"
               width={48}
               height={48}
