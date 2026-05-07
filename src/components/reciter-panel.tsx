@@ -11,10 +11,8 @@ import {
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
 import { useAudioStore } from "@/lib/audio-store";
-import { RECITERS, AUDIO_QUALITIES } from "@/lib/quran-data";
+import { RECITERS } from "@/lib/quran-data";
 import type { Reciter } from "@/lib/quran-types";
 
 const CATEGORY_FLAGS: Record<string, string> = {
@@ -35,8 +33,8 @@ export default function ReciterPanel() {
     currentReciter,
     setCurrentReciter,
     setReciter,
-    audioQuality,
-    setAudioQuality,
+    isPlaying,
+    currentSurah,
   } = useAudioStore();
 
   const [search, setSearch] = useState("");
@@ -72,7 +70,7 @@ export default function ReciterPanel() {
     return groups;
   }, [filteredReciters]);
 
-  /** Select a reciter — the audio player engine detects reciter changes and reloads */
+  /** Select a reciter — if playing, force reload audio */
   const handleSelectReciter = (r: Reciter) => {
     setCurrentReciter(r.id);
     setReciter(r);
@@ -82,11 +80,6 @@ export default function ReciterPanel() {
     if (isReciterPanelOpen) {
       toggleReciterPanel();
     }
-  };
-
-  /** Change audio quality — the audio player engine detects quality changes and reloads */
-  const handleQualityChange = (quality: string) => {
-    setAudioQuality(quality);
   };
 
   const handleClose = (open: boolean) => {
@@ -113,7 +106,7 @@ export default function ReciterPanel() {
         <SheetHeader className="mb-4">
           <SheetTitle className="text-white text-lg">Reciters</SheetTitle>
           <SheetDescription className="text-gray-400 text-sm">
-            Choose your preferred reciter and audio quality
+            Choose your preferred reciter — full surah streaming
           </SheetDescription>
         </SheetHeader>
 
@@ -207,35 +200,20 @@ export default function ReciterPanel() {
           })}
         </div>
 
-        {/* Audio quality section */}
+        {/* Audio quality note */}
         <div className="mt-8 px-4 pb-6 border-t border-white/10 pt-6">
-          <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
-            Audio Quality
-          </h3>
-          <RadioGroup
-            value={audioQuality}
-            onValueChange={handleQualityChange}
-            className="grid grid-cols-3 gap-3"
-          >
-            {AUDIO_QUALITIES.map((q) => (
-              <Label
-                key={q.value}
-                htmlFor={`quality-${q.value}`}
-                className={`flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all text-center ${
-                  audioQuality === q.value
-                    ? "bg-amber-500/10 border-amber-500/40 text-amber-400"
-                    : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10 hover:border-white/10"
-                }`}
-              >
-                <RadioGroupItem
-                  value={q.value}
-                  id={`quality-${q.value}`}
-                  className="sr-only"
-                />
-                <span className="text-sm font-medium">{q.label}</span>
-              </Label>
-            ))}
-          </RadioGroup>
+          <div className="flex items-center gap-2 mb-2">
+            <svg className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z" />
+            </svg>
+            <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
+              Audio Quality
+            </h3>
+          </div>
+          <p className="text-xs text-gray-500 leading-relaxed">
+            Full surah streaming at 128 kbps — high quality audio for the best listening experience.
+            Each surah plays as one complete audio file for seamless playback.
+          </p>
         </div>
       </SheetContent>
     </Sheet>

@@ -23,11 +23,6 @@ export interface Reciter {
   audioPrefix?: string;
 }
 
-export interface AudioQuality {
-  label: string;
-  value: string;
-}
-
 export interface AyahText {
   number: number;
   numberInSurah: number;

@@ -1,4 +1,4 @@
-import { Surah, Reciter, AudioQuality } from "./quran-types";
+import { Surah, Reciter } from "./quran-types";
 
 export const SURAH_DATA: Surah[] = [
   { number: 1, arabicName: "الفاتحة", englishName: "Al-Fatihah", englishMeaning: "The Opening", ayahCount: 7, revelationType: "Meccan", description: "The opening chapter of the Quran, recited in every prayer. It is a summary of the entire Quran." },
@@ -90,7 +90,7 @@ export const SURAH_DATA: Surah[] = [
   { number: 87, arabicName: "الأعلى", englishName: "Al-A'la", englishMeaning: "The Most High", ayahCount: 19, revelationType: "Meccan", description: "Glorifies the name of the Lord Most High and mentions the books of Ibrahim and Musa." },
   { number: 88, arabicName: "الغاشية", englishName: "Al-Ghashiyah", englishMeaning: "The Overwhelming", ayahCount: 26, revelationType: "Meccan", description: "Describes the faces on the Day of Judgment—some humbled and some joyful—and reflects on creation." },
   { number: 89, arabicName: "الفجر", englishName: "Al-Fajr", englishMeaning: "The Dawn", ayahCount: 30, revelationType: "Meccan", description: "Swears by the dawn and recounts the destruction of Aad, Thamud, and Pharaoh." },
-  { number: 90, arabicName: "البلد", englishName: "Al-Balad", englishMeaning: "The City", ayahCount: 20, revelationType: "Meccan", description: "Refers to the sacred city of Makkah and describes the steep path of righteousness." },
+  { number: 90, arabicName: "البلد", englishName: "Al-Balud", englishMeaning: "The City", ayahCount: 20, revelationType: "Meccan", description: "Refers to the sacred city of Makkah and describes the steep path of righteousness." },
   { number: 91, arabicName: "الشمس", englishName: "Ash-Shams", englishMeaning: "The Sun", ayahCount: 15, revelationType: "Meccan", description: "Swears by the sun and its brightness and recounts the story of the she-camel of Thamud." },
   { number: 92, arabicName: "الليل", englishName: "Al-Layl", englishMeaning: "The Night", ayahCount: 21, revelationType: "Meccan", description: "Contrasts the paths of the righteous who give and the wicked who are greedy." },
   { number: 93, arabicName: "الضحى", englishName: "Ad-Duhaa", englishMeaning: "The Morning Hours", ayahCount: 11, revelationType: "Meccan", description: "Reassures the Prophet that Allah has not forsaken him and promises a future better than the past." },
@@ -101,7 +101,7 @@ export const SURAH_DATA: Surah[] = [
   { number: 98, arabicName: "البينة", englishName: "Al-Bayyinah", englishMeaning: "The Clear Proof", ayahCount: 8, revelationType: "Medinan", description: "Discusses the clear proof that came to the People of the Book and the fate of disbelievers." },
   { number: 99, arabicName: "الزلزلة", englishName: "Az-Zalzalah", englishMeaning: "The Earthquake", ayahCount: 8, revelationType: "Medinan", description: "Describes the earthquake of the Day of Judgment and that even an atom's weight of good or evil will be seen." },
   { number: 100, arabicName: "العاديات", englishName: "Al-Adiyat", englishMeaning: "The Courser", ayahCount: 11, revelationType: "Meccan", description: "Swears by the charging warhorses and exposes human ingratitude and love of wealth." },
-  { number: 101, arabicName: "القارعة", englishName: "Al-Qari'ah", englishMeaning: "The Calamity", ayahCount: 11, revelationType: "Meccan", description: "Describes the striking calamity of the Day of Judgment and the weighing of deeds." },
+  { number: 101, arabicName: "القارئة", englishName: "Al-Qari'ah", englishMeaning: "The Calamity", ayahCount: 11, revelationType: "Meccan", description: "Describes the striking calamity of the Day of Judgment and the weighing of deeds." },
   { number: 102, arabicName: "التكاثر", englishName: "At-Takathur", englishMeaning: "The Rivalry in World Increase", ayahCount: 8, revelationType: "Meccan", description: "Warns against the competition in worldly accumulation that distracts from the Hereafter." },
   { number: 103, arabicName: "العصر", englishName: "Al-Asr", englishMeaning: "The Declining Day", ayahCount: 3, revelationType: "Meccan", description: "Declares that all of humanity is in loss except those who believe, do good, and enjoin truth and patience." },
   { number: 104, arabicName: "الهمزة", englishName: "Al-Humazah", englishMeaning: "The Traducer", ayahCount: 9, revelationType: "Meccan", description: "Condemns those who mock others and hoard wealth, warning of the crushing Fire." },
@@ -117,26 +117,41 @@ export const SURAH_DATA: Surah[] = [
   { number: 114, arabicName: "الناس", englishName: "An-Nas", englishMeaning: "Mankind", ayahCount: 6, revelationType: "Meccan", description: "Seeks refuge in the Lord of mankind from the whisperings of Satan and evil-minded people." },
 ];
 
+// Reciter IDs match the islamic.network CDN surah-audio endpoint
+// URL pattern: https://cdn.islamic.network/quran/audio-surah/128/{id}/{surah_number}.mp3
 export const RECITERS: Reciter[] = [
-  // Popular — all verified working on cdn.islamic.network
+  // Popular
   { id: "ar.alafasy", name: "Mishary Rashid Alafasy", arabicName: "مشاري راشد العفاسي", country: "Kuwait", category: "Popular", style: "Murattal" },
-  { id: "ar.muhammadjibreel", name: "Muhammad Jibreel", arabicName: "محمد جبريل", country: "Egypt", category: "Popular", style: "Murattal" },
-  { id: "ar.mahermuaiqly", name: "Maher Al Muaiqly", arabicName: "ماهر المعيقلي", country: "Saudi Arabia", category: "Popular", style: "Murattal" },
-  { id: "ar.shaatree", name: "Abu Bakr Ash-Shaatree", arabicName: "أبو بكر الشاطري", country: "Saudi Arabia", category: "Popular", style: "Murattal" },
+  { id: "ar.abdulbasitmurattal", name: "Abdul Basit Abdul Samad", arabicName: "عبدالباسط عبدالصمد", country: "Egypt", category: "Popular", style: "Murattal" },
+  { id: "ar.abdulbasitmujawwad", name: "Abdul Basit Abdul Samad (Mujawwad)", arabicName: "عبدالباسط عبدالصمد مجود", country: "Egypt", category: "Popular", style: "Mujawwad" },
+  { id: "ar.yasseraldossari", name: "Yasser Ad-Dosari", arabicName: "ياسر الدوسري", country: "Saudi Arabia", category: "Popular", style: "Murattal" },
+  { id: "ar.saudalshuraim", name: "Saoud Ash-Shuraym", arabicName: "سعود الشريم", country: "Saudi Arabia", category: "Popular", style: "Murattal" },
+  { id: "ar.mahershakhashiro", name: "Maher Al Muaiqly", arabicName: "ماهر المعيقلي", country: "Saudi Arabia", category: "Popular", style: "Murattal" },
   // Egyptian
-  { id: "ar.husary", name: "Mahmoud Khalil Al-Husary", arabicName: "محمود خليل الحصري", country: "Egypt", category: "Egyptian", style: "Murattal" },
-  { id: "ar.husarymujawwad", name: "Al-Husary (Mujawwad)", arabicName: "محمود خليل الحصري مجود", country: "Egypt", category: "Egyptian", style: "Mujawwad" },
-  { id: "ar.minshawi", name: "Mohamed Siddiq El-Minshawi", arabicName: "محمد صديق المنشاوي", country: "Egypt", category: "Egyptian", style: "Murattal" },
-  { id: "ar.muhammadayyoub", name: "Muhammad Ayyoub", arabicName: "محمد أيوب", country: "Egypt", category: "Egyptian", style: "Murattal" },
-  { id: "ar.ahmedajamy", name: "Ahmed Al-Ajamy", arabicName: "أحمد العجمي", country: "Saudi Arabia", category: "Egyptian", style: "Murattal" },
+  { id: "ar.muhammadayyub", name: "Muhammad Ayyub", arabicName: "محمد أيوب", country: "Egypt", category: "Egyptian", style: "Murattal" },
+  { id: "ar.muhammadsiddiqalminshawimujawwad", name: "Mohamed Siddiq El-Minshawi", arabicName: "محمد صديق المنشاوي", country: "Egypt", category: "Egyptian", style: "Mujawwad" },
+  { id: "ar.haniarrifai", name: "Hani Ar-Rifai", arabicName: "هاني الرفاعي", country: "Egypt", category: "Egyptian", style: "Murattal" },
+  { id: "ar.ahmedalajmi", name: "Ahmed Al-Ajamy", arabicName: "أحمد العجمي", country: "Egypt", category: "Egyptian", style: "Murattal" },
+  { id: "ar.mahmoudalialbanna", name: "Mahmoud Ali Al-Banna", arabicName: "محمود علي البنا", country: "Egypt", category: "Egyptian", style: "Murattal" },
+  { id: "ar.muhammadanwarshahat", name: "Mohammad Ash-Shahat", arabicName: "محمد الشحات", country: "Egypt", category: "Egyptian", style: "Murattal" },
+  { id: "ar.mustafaismail", name: "Mustafa Ismail", arabicName: "مصطفى إسماعيل", country: "Egypt", category: "Egyptian", style: "Murattal" },
   // Saudi
-  { id: "ar.hudhaify", name: "Ali Al-Hudhaify", arabicName: "علي الحذيفي", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
-  // Special — surah-level audio source (mp3quran.net)
-  { id: "afs", name: "Abd Al-Baset Abd Al-Samad", arabicName: "عبد الباسط عبد الصمد", country: "Egypt", category: "Popular", style: "Murattal", audioSource: "surah", audioBaseUrl: "https://server8.mp3quran.net/afs", audioPrefix: "afs" },
+  { id: "ar.aliabdurrahmanalhuthaify", name: "Ali Al-Hudhaify", arabicName: "علي الحذيفي", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
+  { id: "ar.abdullahbasfar", name: "Abdullah Basfar", arabicName: "عبدالله بصفر", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
+  { id: "ar.bandarbalila", name: "Abdulrahman Al-Balila", arabicName: "عبدالرحمن البليهي", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
+  { id: "ar.faresabbad", name: "Fares Abbaad", arabicName: "فارست عباد", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
+  { id: "ar.ibrahimalakhdar", name: "Ibrahim Al-Akhdar", arabicName: "إبراهيم الأخضر", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
+  { id: "ar.abdullahalmatrood", name: "Abdullah Al-Matrood", arabicName: "عبدالله المطرود", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
+  { id: "ar.salahalbudair", name: "Salah Al-Budair", arabicName: "صلاح البدير", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
+  { id: "ar.muhammadalluhaidan", name: "Muhammad Al-Luhaidan", arabicName: "محمد اللحيدان", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
+  // Other
+  { id: "ar.ibrahimaldossari", name: "Ibrahim Al-Dossari", arabicName: "إبراهيم الدوسري", country: "Saudi Arabia", category: "Other", style: "Murattal" },
+  { id: "ar.nasseralqatami", name: "Nasser Al-Qatami", arabicName: "ناصر القطامي", country: "Saudi Arabia", category: "Other", style: "Murattal" },
+  { id: "ar.khaledalqahtani", name: "Khaled Al-Qahtani", arabicName: "خالد القحطاني", country: "Saudi Arabia", category: "Other", style: "Murattal" },
+  { id: "ar.abdulbariaththubaity", name: "Abdul Bari Ath-Thubaity", arabicName: "عبدالباري الثبيتي", country: "Saudi Arabia", category: "Other", style: "Murattal" },
 ];
 
-export const AUDIO_QUALITIES: AudioQuality[] = [
-  { label: "64 kbps", value: "64" },
-  { label: "128 kbps", value: "128" },
-  { label: "192 kbps", value: "192" },
-];
+/** Build the full surah audio URL for a given reciter and surah number */
+export function getSurahAudioUrl(reciterId: string, surahNumber: number): string {
+  return `https://cdn.islamic.network/quran/audio-surah/128/${reciterId}/${surahNumber}.mp3`;
+}
