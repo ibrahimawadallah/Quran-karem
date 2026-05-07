@@ -53,6 +53,33 @@ function AudioWave({ isPlaying }: { isPlaying: boolean }) {
   );
 }
 
+// Ayah timing data for Surah Al-Fatiha (surah 1) - approximate timings in seconds
+// These would ideally come from the backend or be calculated based on audio analysis
+const AYAH_TIMINGS: Record<number, Record<number, number>> = {
+  1: { 1: 0, 2: 4, 3: 8, 4: 12, 5: 16, 6: 20, 7: 25 }, // Al-Fatiha approx timings
+};
+
+function getCurrentAyahFromTime(surahNumber: number, currentTime: number, totalAyahs: number): number {
+  // If we have timing data for this surah, use it
+  if (AYAH_TIMINGS[surahNumber]) {
+    const timings = AYAH_TIMINGS[surahNumber];
+    const ayahNumbers = Object.keys(timings).map(Number).sort((a, b) => a - b);
+    
+    for (let i = ayahNumbers.length - 1; i >= 0; i--) {
+      if (currentTime >= timings[ayahNumbers[i]]) {
+        return ayahNumbers[i];
+      }
+    }
+    return 1;
+  }
+  
+  // Otherwise, estimate based on equal distribution
+  if (totalAyahs <= 0) return 1;
+  const ayahDuration = 20; // Assume ~20 seconds per ayah on average
+  const estimatedAyah = Math.floor(currentTime / ayahDuration) + 1;
+  return Math.min(estimatedAyah, totalAyahs);
+}
+
 export default function AudioPlayer() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
@@ -60,6 +87,7 @@ export default function AudioPlayer() {
   const fallbackAttemptedRef = useRef(false);
   const timeRef = useRef(0);
   const durationRef = useRef(0);
+  const lastAyahRef = useRef(1);
 
   const {
     isPlayerVisible,
@@ -77,6 +105,8 @@ export default function AudioPlayer() {
     setAudioError,
     isUsingFallback,
     setIsUsingFallback,
+    currentAyahInSurah,
+    setCurrentAyah,
   } = useAudioStore();
 
   // Use state only for re-renders, synced from refs via RAF
@@ -111,6 +141,19 @@ export default function AudioPlayer() {
         if (timeRef.current !== ct) {
           timeRef.current = ct;
           setDisplayTime(ct);
+          
+          // Update current ayah based on time
+          if (currentSurah) {
+            const newAyah = getCurrentAyahFromTime(
+              currentSurah.number,
+              ct,
+              currentSurah.ayahCount
+            );
+            if (newAyah !== lastAyahRef.current) {
+              lastAyahRef.current = newAyah;
+              setCurrentAyah(newAyah);
+            }
+          }
         }
         if (isFinite(dur) && durationRef.current !== dur) {
           durationRef.current = dur;
@@ -121,7 +164,7 @@ export default function AudioPlayer() {
     };
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, []);
+  }, [currentSurah, setCurrentAyah]);
 
   /** Load and optionally auto-play a URL */
   const loadAudio = useCallback(
@@ -332,164 +375,167 @@ export default function AudioPlayer() {
     <>
       <audio ref={audioRef} preload="auto" />
 
-      {/* Fixed bottom bar */}
-      <div
-        className="fixed bottom-0 left-0 right-0 z-50 border-t border-purple-500/20"
-        style={{
-          background: "rgba(10, 5, 24, 0.95)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-        }}
-      >
-        {/* Progress bar (thin, clickable) */}
-        <div
-          ref={progressRef}
-          className="w-full h-1.5 cursor-pointer group relative"
-          onClick={handleProgressClick}
-          onPointerMove={(e) => {
-            if (e.buttons > 0) handleProgressDrag(e);
-          }}
-          style={{ background: "rgba(139, 92, 246, 0.15)" }}
-        >
-          <div
-            className="absolute top-0 left-0 h-full bg-gradient-to-r from-amber-400 to-amber-600 transition-[width] duration-100"
-            style={{ width: `${progressPercent}%` }}
-          />
-          <div
-            className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-amber-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg shadow-amber-400/50"
-            style={{ left: `${progressPercent}%`, marginLeft: "-6px" }}
-          />
-        </div>
+       {/* Fixed bottom bar */}
+       <div
+         className="fixed bottom-0 left-0 right-0 z-50 border-t border-purple-500/20"
+         style={{
+           background: "rgba(10, 5, 24, 0.95)",
+           backdropFilter: "blur(20px)",
+           WebkitBackdropFilter: "blur(20px)",
+         }}
+       >
+         {/* Progress bar (thin, clickable) */}
+         <div
+           ref={progressRef}
+           className="w-full h-2 cursor-pointer group relative touch-none select-none"
+           onClick={handleProgressClick}
+           onPointerMove={(e) => {
+             if (e.buttons > 0) handleProgressDrag(e);
+           }}
+           onPointerDown={handleProgressDrag}
+           style={{ background: "rgba(139, 92, 246, 0.15)" }}
+         >
+           <div
+             className="absolute top-0 left-0 h-full bg-gradient-to-r from-amber-400 to-amber-600 transition-[width] duration-100"
+             style={{ width: `${progressPercent}%` }}
+           />
+           <div
+             className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-amber-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg shadow-amber-400/50 touch-none"
+             style={{ left: `${progressPercent}%`, marginLeft: "-8px" }}
+           />
+         </div>
 
-        {/* Error bar */}
-        {audioError && (
-          <div className="flex items-center justify-center gap-3 px-4 py-2 bg-red-900/30 border-b border-red-500/20">
-            <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-            <span className="text-xs text-red-300">{audioError}</span>
-            <button
-              onClick={handleRetry}
-              className="flex items-center gap-1.5 px-2.5 py-1 bg-red-500/20 text-red-300 rounded-md hover:bg-red-500/30 transition-colors text-xs"
-            >
-              <RefreshCw className="w-3 h-3" />
-              Retry
-            </button>
-          </div>
-        )}
+         {/* Error bar */}
+         {audioError && (
+           <div className="flex items-center justify-center gap-3 px-4 py-2 bg-red-900/30 border-b border-red-500/20">
+             <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+             <span className="text-xs text-red-300">{audioError}</span>
+             <button
+               onClick={handleRetry}
+               className="flex items-center gap-1.5 px-2.5 py-1 bg-red-500/20 text-red-300 rounded-md hover:bg-red-500/30 transition-colors text-xs"
+             >
+               <RefreshCw className="w-3 h-3" />
+               Retry
+             </button>
+           </div>
+         )}
 
-        <div className="flex items-center gap-2 sm:gap-4 px-3 sm:px-6 py-3 max-w-screen-xl mx-auto">
-          {/* Left: Surah info + wave */}
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <AudioWave isPlaying={isPlaying && !audioError} />
+         <div className="flex items-center gap-1 sm:gap-3 px-2 sm:px-4 py-2 max-w-screen-xl mx-auto">
+           {/* Left: Surah info + wave */}
+           <div className="flex items-center gap-2 min-w-0 flex-1">
+             <AudioWave isPlaying={isPlaying && !audioError} />
 
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-amber-400 font-medium">
-                  {currentSurah.number}
-                </span>
-                <span className="arabic-name text-lg text-amber-400 truncate">
-                  {currentSurah.arabicName}
-                </span>
-                <span className="text-xs text-muted-foreground truncate hidden sm:inline">
-                  {currentSurah.englishName}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 text-[11px] text-muted-foreground tabular-nums">
-                <span>{currentSurah.englishMeaning} &bull; {currentSurah.ayahCount} Ayahs</span>
-                {isUsingFallback && !audioError && (
-                  <span className="text-amber-500/70">&bull; backup source</span>
-                )}
-              </div>
-            </div>
-          </div>
+             <div className="min-w-0">
+               <div className="flex items-center gap-1.5">
+                 <span className="text-[10px] sm:text-xs text-amber-400 font-medium tabular-nums">
+                   {currentSurah?.number}
+                 </span>
+                 <span className="arabic-name text-sm sm:text-lg text-amber-400 truncate">
+                   {currentSurah?.arabicName}
+                 </span>
+               </div>
+               <div className="flex items-center gap-1.5 text-[9px] sm:text-[11px] text-muted-foreground tabular-nums">
+                 <span className="truncate">{currentSurah?.englishMeaning}</span>
+                 <span className="shrink-0">•</span>
+                 <span className="shrink-0">{currentSurah?.ayahCount} Ayahs</span>
+                 {isUsingFallback && !audioError && (
+                   <span className="text-amber-500/70 shrink-0">&bull; backup</span>
+                 )}
+                 {currentSurah && currentAyahInSurah > 0 && (
+                   <span className="text-amber-400/80 shrink-0">&bull; Ayah {currentAyahInSurah}</span>
+                 )}
+               </div>
+             </div>
+           </div>
 
-          {/* Center: Controls */}
-          <div className="flex items-center gap-1 sm:gap-2">
-            {/* Previous */}
-            <button
-              onClick={prevSurah}
-              className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-purple-500/10 active:scale-95"
-              aria-label="Previous surah"
-            >
-              <SkipBack className="w-4 h-4" />
-            </button>
+           {/* Center: Controls */}
+           <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+             {/* Previous */}
+             <button
+               onClick={prevSurah}
+               className="p-1.5 sm:p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-purple-500/10 active:scale-95 touch-manipulation"
+               aria-label="Previous surah"
+             >
+               <SkipBack className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+             </button>
 
-            {/* Play/Pause */}
-            <button
-              onClick={audioError ? handleRetry : togglePlay}
-              className={`p-2.5 rounded-full transition-all active:scale-95 ${
-                isPlaying
-                  ? "bg-amber-500 text-[#0a0518] hover:bg-amber-400 shadow-lg shadow-amber-500/30"
-                  : "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
-              }`}
-              aria-label={audioError ? "Retry" : isPlaying ? "Pause" : "Play"}
-            >
-              {audioError ? (
-                <RefreshCw className="w-5 h-5" />
-              ) : isBuffering ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : isPlaying ? (
-                <Pause className="w-5 h-5" />
-              ) : (
-                <Play className="w-5 h-5 ml-0.5" />
-              )}
-            </button>
+             {/* Play/Pause */}
+             <button
+               onClick={audioError ? handleRetry : togglePlay}
+               className={`p-2 sm:p-2.5 rounded-full transition-all active:scale-95 touch-manipulation ${
+                 isPlaying
+                   ? "bg-amber-500 text-[#0a0518] hover:bg-amber-400 shadow-lg shadow-amber-500/30"
+                   : "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
+               }`}
+               aria-label={audioError ? "Retry" : isPlaying ? "Pause" : "Play"}
+             >
+               {audioError ? (
+                 <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
+               ) : isBuffering ? (
+                 <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+               ) : isPlaying ? (
+                 <Pause className="w-4 h-4 sm:w-5 sm:h-5" />
+               ) : (
+                 <Play className="w-4 h-4 sm:w-5 sm:h-5 ml-0.5" />
+               )}
+             </button>
 
-            {/* Next */}
-            <button
-              onClick={nextSurah}
-              className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-purple-500/10 active:scale-95"
-              aria-label="Next surah"
-            >
-              <SkipForward className="w-4 h-4" />
-            </button>
-          </div>
+             {/* Next */}
+             <button
+               onClick={nextSurah}
+               className="p-1.5 sm:p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-purple-500/10 active:scale-95 touch-manipulation"
+               aria-label="Next surah"
+             >
+               <SkipForward className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+             </button>
+           </div>
 
-          {/* Right: Time + Volume + Close */}
-          <div className="flex items-center gap-2 sm:gap-3 flex-1 justify-end">
-            {/* Time display */}
-            <div className="text-[11px] text-muted-foreground hidden sm:block tabular-nums whitespace-nowrap">
-              {formatTime(displayTime)} / {formatTime(displayDuration)}
-            </div>
+           {/* Right: Time + Volume + Close */}
+           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+             {/* Time display */}
+             <div className="text-[9px] sm:text-[11px] text-muted-foreground tabular-nums shrink-0">
+               {formatTime(displayTime)} / {formatTime(displayDuration)}
+             </div>
 
-            {/* Volume */}
-            <div className="hidden md:flex items-center gap-2">
-              <button
-                onClick={() => setIsMuted(!isMuted)}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-                aria-label={isMuted ? "Unmute" : "Mute"}
-              >
-                {isMuted || volume === 0 ? (
-                  <VolumeX className="w-4 h-4" />
-                ) : (
-                  <Volume2 className="w-4 h-4" />
-                )}
-              </button>
-              <div className="w-20">
-                <Slider
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={[isMuted ? 0 : volume]}
-                  onValueChange={(val) => {
-                    setVolume(val[0]);
-                    if (val[0] > 0) setIsMuted(false);
-                  }}
-                  className="cursor-pointer"
-                />
-              </div>
-            </div>
+             {/* Volume - hidden on very small screens */}
+             <div className="hidden sm:flex items-center gap-1">
+               <button
+                 onClick={() => setIsMuted(!isMuted)}
+                 className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-full hover:bg-white/10"
+                 aria-label={isMuted ? "Unmute" : "Mute"}
+               >
+                 {isMuted || volume === 0 ? (
+                   <VolumeX className="w-3.5 h-3.5" />
+                 ) : (
+                   <Volume2 className="w-3.5 h-3.5" />
+                 )}
+               </button>
+               <div className="w-16">
+                 <Slider
+                   min={0}
+                   max={1}
+                   step={0.01}
+                   value={[isMuted ? 0 : volume]}
+                   onValueChange={(val) => {
+                     setVolume(val[0]);
+                     if (val[0] > 0) setIsMuted(false);
+                   }}
+                   className="cursor-pointer"
+                 />
+               </div>
+             </div>
 
-            {/* Close */}
-            <button
-              onClick={hidePlayer}
-              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-purple-500/10 active:scale-95"
-              aria-label="Close player"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-    </>
+             {/* Close */}
+             <button
+               onClick={hidePlayer}
+               className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-white/10 active:scale-95 touch-manipulation"
+               aria-label="Close player"
+             >
+               <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+             </button>
+           </div>
+         </div>
+       </div>
+     </>
   );
 }

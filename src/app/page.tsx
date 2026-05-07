@@ -9,10 +9,12 @@ import ReciterPanel from '@/components/reciter-panel';
 import SurahReadingModal from '@/components/surah-reading-modal';
 import ScrollToTop from '@/components/scroll-to-top';
 import Footer from '@/components/footer';
+import InstallPrompt from '@/components/install-prompt';
+import TranslationSelector from '@/components/translation-selector';
 import { useAudioStore } from '@/lib/audio-store';
 
 export default function Home() {
-  const { isPlayerVisible } = useAudioStore();
+  const { isPlayerVisible, selectedTranslations } = useAudioStore();
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden" style={{ backgroundColor: '#0a0518' }}>
@@ -35,6 +37,11 @@ export default function Home() {
         {/* Header / Navbar */}
         <Header />
 
+        {/* Translation selector for desktop */}
+        <div className="hidden sm:block max-w-6xl mx-auto px-4 py-3">
+          <TranslationSelector />
+        </div>
+
         {/* Hero Section */}
         <HeroSection />
 
@@ -53,6 +60,9 @@ export default function Home() {
       {/* Fixed components */}
       <ScrollToTop />
 
+      {/* Install Prompt */}
+      <InstallPrompt />
+
       {/* Audio Player (fixed at bottom) */}
       {isPlayerVisible && <AudioPlayer />}
 
@@ -64,6 +74,9 @@ export default function Home() {
 
       {/* Bottom padding for audio player — accounts for safe area on mobile */}
       {isPlayerVisible && <div className="h-16 sm:h-20" />}
+      {/* Extra padding at bottom for install prompt */}
+      <div className="h-20 sm:h-0" />
     </div>
   );
 }
+

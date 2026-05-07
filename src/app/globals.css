@@ -438,3 +438,67 @@ input[type="range"]::-moz-range-thumb:hover {
 .touch-none {
   touch-action: none;
 }
+
+/* Mobile-specific improvements */
+@media (max-width: 640px) {
+  /* Larger touch targets for mobile */
+  button, .touch-manipulation {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Prevent pull-to-refresh on audio player area */
+  .fixed.bottom-0 {
+    overscroll-behavior: contain;
+  }
+  
+  /* Better font scaling on mobile */
+  .arabic-name {
+    font-size: clamp(1.1rem, 4vw, 1.5rem);
+  }
+  
+  /* Reduced motion for mobile if preferred */
+  @media (prefers-reduced-motion: reduce) {
+    .ambient-orb,
+    .ambient-orb-slow,
+    .audio-bar {
+      animation: none;
+    }
+    
+    .transition-all {
+      transition: none;
+    }
+  }
+}
+
+/* Install prompt animation */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+/* iOS specific fixes */
+@supports (-webkit-touch-callout: none) {
+  .fixed.bottom-0 {
+    /* Add extra padding for iOS home indicator */
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+  
+  .h-16 {
+    height: calc(4rem + env(safe-area-inset-bottom));
+  }
+  
+  .h-20 {
+    height: calc(5rem + env(safe-area-inset-bottom));
+  }
+}

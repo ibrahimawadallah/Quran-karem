@@ -31,18 +31,35 @@ export const metadata: Metadata = {
   ],
   metadataBase: new URL("https://quran.medtechai.net"),
   icons: {
-    icon: "/favicon.jpg",
+    icon: "/logo.svg",
+    apple: "/mushaf-logo.jpg",
   },
+  manifest: "/manifest.json",
   openGraph: {
     title: "Qalam - Quran Kareem",
     description: "A premium Quran Kareem streaming application by MedTechAI Arab Organization",
     type: "website",
     url: "https://quran.medtechai.net",
     siteName: "Qalam - Quran Kareem",
+    images: [
+      {
+        url: "/mushaf-logo.jpg",
+        width: 512,
+        height: 512,
+        alt: "Qalam Quran App",
+      },
+    ],
   },
   alternates: {
     canonical: "https://quran.medtechai.net",
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Qalam",
+  },
+  mobileWebAppCapable: true,
+  applicationName: "Qalam Quran",
 };
 
 export default function RootLayout({
@@ -54,13 +71,17 @@ export default function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-        <meta name="theme-color" content="#0a0518" />
+        <meta name="theme-color" content="#fbbf24" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Qalam" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="format-detection" content="telephone=no" />
         <link
           href="https://fonts.googleapis.com/css2?family=Scheherazade+New:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        <link rel="manifest" href="/manifest.json" />
       </head>
       <body
         className={`${spaceGrotesk.variable} ${outfit.variable} font-sans antialiased`}
@@ -71,7 +92,23 @@ export default function RootLayout({
       >
         {children}
         <Toaster />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                  navigator.serviceWorker.register('/sw.js').then((registration) => {
+                    console.log('SW registered: ', registration);
+                  }).catch((registrationError) => {
+                    console.log('SW registration failed: ', registrationError);
+                  });
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );
 }
+

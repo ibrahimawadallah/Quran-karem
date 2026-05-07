@@ -1,6 +1,5 @@
 {
   "framework": "nextjs",
   "buildCommand": "next build",
-  "outputDirectory": ".next",
-  "domains": ["quran.medtechai.net"]
+  "outputDirectory": ".next"
 }
