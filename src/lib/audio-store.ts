@@ -78,6 +78,11 @@ interface AudioState {
   toggleReciterPanel: () => void;
 }
 
+/** Get surah info by surah number */
+export function getSurahInfo(surahNumber: number) {
+  return SURAH_DATA.find((s) => s.number === surahNumber);
+}
+
 export const useAudioStore = create<AudioState>((set, get) => {
   const meccanCount = SURAH_DATA.filter((s) => s.revelationType === "Meccan").length;
   const medinanCount = SURAH_DATA.filter((s) => s.revelationType === "Medinan").length;
