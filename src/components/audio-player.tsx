@@ -10,9 +10,14 @@ import {
   VolumeX,
   X,
   Loader2,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import { useAudioStore } from "@/lib/audio-store";
-import { getSurahAudioUrl } from "@/lib/quran-data";
+import {
+  getSurahAudioUrl,
+  getFallbackAudioUrl,
+} from "@/lib/quran-data";
 import { Slider } from "@/components/ui/slider";
 
 function formatTime(seconds: number): string {
@@ -52,6 +57,7 @@ export default function AudioPlayer() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const prevSurahKeyRef = useRef("");
+  const fallbackAttemptedRef = useRef(false);
   const timeRef = useRef(0);
   const durationRef = useRef(0);
 
@@ -67,6 +73,10 @@ export default function AudioPlayer() {
     currentReciter,
     setIsBuffering,
     isBuffering,
+    audioError,
+    setAudioError,
+    isUsingFallback,
+    setIsUsingFallback,
   } = useAudioStore();
 
   // Use state only for re-renders, synced from refs via RAF
@@ -80,9 +90,14 @@ export default function AudioPlayer() {
     ? `${currentReciter}-${currentSurah.number}`
     : "";
 
-  // Build the full surah audio URL
-  const audioUrl = currentSurah
+  // Build the primary audio URL
+  const primaryUrl = currentSurah
     ? getSurahAudioUrl(currentReciter, currentSurah.number)
+    : "";
+
+  // Build the fallback audio URL
+  const fallbackUrl = currentSurah
+    ? getFallbackAudioUrl(currentReciter, currentSurah.number)
     : "";
 
   // RAF loop to sync audio time to display (smooth progress)
@@ -108,26 +123,41 @@ export default function AudioPlayer() {
     return () => cancelAnimationFrame(rafId);
   }, []);
 
+  /** Load and optionally auto-play a URL */
+  const loadAudio = useCallback(
+    (url: string, autoPlay: boolean) => {
+      const audio = audioRef.current;
+      if (!audio || !url) return;
+
+      audio.src = url;
+      audio.load();
+
+      if (autoPlay) {
+        audio.play().catch(() => {
+          // Autoplay may be blocked by browser; user will need to click play
+        });
+      }
+    },
+    []
+  );
+
   // Load new audio when surah or reciter changes
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !audioUrl) return;
+    if (!primaryUrl) return;
     if (prevSurahKeyRef.current === surahKey) return;
     prevSurahKeyRef.current = surahKey;
+    fallbackAttemptedRef.current = false;
 
     // Reset refs
     timeRef.current = 0;
     durationRef.current = 0;
 
-    audio.src = audioUrl;
-    audio.load();
+    setAudioError(null);
+    setIsUsingFallback(false);
+    setIsBuffering(true);
 
-    if (isPlaying) {
-      audio.play().catch(() => {
-        // Autoplay may be blocked
-      });
-    }
-  }, [surahKey, audioUrl, isPlaying]);
+    loadAudio(primaryUrl, isPlaying);
+  }, [surahKey, primaryUrl, isPlaying, loadAudio, setAudioError, setIsUsingFallback, setIsBuffering]);
 
   // Play/pause based on store state
   useEffect(() => {
@@ -150,16 +180,33 @@ export default function AudioPlayer() {
     const onWaiting = () => setIsBuffering(true);
     const onPlaying = () => {
       setIsBuffering(false);
+      setAudioError(null);
       setIsPlaying(true);
     };
+
     const onEnded = () => {
       // Auto-play next surah
       nextSurah();
     };
+
     const onError = () => {
+      const audio = audioRef.current;
+      if (!audio) return;
+
       setIsBuffering(false);
-      // Try next surah on error
-      nextSurah();
+
+      // If primary failed and we haven't tried fallback yet, try fallback
+      if (!fallbackAttemptedRef.current && fallbackUrl) {
+        fallbackAttemptedRef.current = true;
+        setIsUsingFallback(true);
+        audio.src = fallbackUrl;
+        audio.load();
+        audio.play().catch(() => {});
+        return;
+      }
+
+      // Both sources failed — show error
+      setAudioError("Unable to load audio. The reciter may not be available for this surah.");
     };
 
     audio.addEventListener("canplay", onCanPlay);
@@ -175,7 +222,7 @@ export default function AudioPlayer() {
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("error", onError);
     };
-  }, [nextSurah, setIsBuffering, setIsPlaying]);
+  }, [nextSurah, setIsBuffering, setIsPlaying, setAudioError, setIsUsingFallback, fallbackUrl]);
 
   // Apply volume and mute
   useEffect(() => {
@@ -201,7 +248,6 @@ export default function AudioPlayer() {
           break;
         case "ArrowLeft":
           e.preventDefault();
-          // Seek back 10 seconds
           if (audioRef.current) {
             audioRef.current.currentTime = Math.max(
               0,
@@ -211,7 +257,6 @@ export default function AudioPlayer() {
           break;
         case "ArrowRight":
           e.preventDefault();
-          // Seek forward 10 seconds
           if (audioRef.current) {
             audioRef.current.currentTime = Math.min(
               audioRef.current.duration || 0,
@@ -260,6 +305,24 @@ export default function AudioPlayer() {
     []
   );
 
+  /** Retry loading audio */
+  const handleRetry = useCallback(() => {
+    if (!currentSurah) return;
+    fallbackAttemptedRef.current = false;
+    setAudioError(null);
+    setIsBuffering(true);
+    setIsUsingFallback(false);
+    timeRef.current = 0;
+    durationRef.current = 0;
+
+    const audio = audioRef.current;
+    if (audio) {
+      audio.src = primaryUrl;
+      audio.load();
+      audio.play().catch(() => {});
+    }
+  }, [currentSurah, primaryUrl, setAudioError, setIsBuffering, setIsUsingFallback]);
+
   if (!isPlayerVisible || !currentSurah) return null;
 
   const progressPercent =
@@ -298,10 +361,25 @@ export default function AudioPlayer() {
           />
         </div>
 
+        {/* Error bar */}
+        {audioError && (
+          <div className="flex items-center justify-center gap-3 px-4 py-2 bg-red-900/30 border-b border-red-500/20">
+            <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+            <span className="text-xs text-red-300">{audioError}</span>
+            <button
+              onClick={handleRetry}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-red-500/20 text-red-300 rounded-md hover:bg-red-500/30 transition-colors text-xs"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Retry
+            </button>
+          </div>
+        )}
+
         <div className="flex items-center gap-2 sm:gap-4 px-3 sm:px-6 py-3 max-w-screen-xl mx-auto">
           {/* Left: Surah info + wave */}
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <AudioWave isPlaying={isPlaying} />
+            <AudioWave isPlaying={isPlaying && !audioError} />
 
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -315,8 +393,11 @@ export default function AudioPlayer() {
                   {currentSurah.englishName}
                 </span>
               </div>
-              <div className="text-[11px] text-muted-foreground tabular-nums">
-                {currentSurah.englishMeaning} • {currentSurah.ayahCount} Ayahs
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground tabular-nums">
+                <span>{currentSurah.englishMeaning} &bull; {currentSurah.ayahCount} Ayahs</span>
+                {isUsingFallback && !audioError && (
+                  <span className="text-amber-500/70">&bull; backup source</span>
+                )}
               </div>
             </div>
           </div>
@@ -334,15 +415,17 @@ export default function AudioPlayer() {
 
             {/* Play/Pause */}
             <button
-              onClick={togglePlay}
+              onClick={audioError ? handleRetry : togglePlay}
               className={`p-2.5 rounded-full transition-all active:scale-95 ${
                 isPlaying
                   ? "bg-amber-500 text-[#0a0518] hover:bg-amber-400 shadow-lg shadow-amber-500/30"
                   : "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
               }`}
-              aria-label={isPlaying ? "Pause" : "Play"}
+              aria-label={audioError ? "Retry" : isPlaying ? "Pause" : "Play"}
             >
-              {isBuffering ? (
+              {audioError ? (
+                <RefreshCw className="w-5 h-5" />
+              ) : isBuffering ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : isPlaying ? (
                 <Pause className="w-5 h-5" />

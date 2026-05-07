@@ -211,8 +211,8 @@ export default function ReciterPanel() {
             </h3>
           </div>
           <p className="text-xs text-gray-500 leading-relaxed">
-            Full surah streaming at 128 kbps — high quality audio for the best listening experience.
-            Each surah plays as one complete audio file for seamless playback.
+            Full surah streaming — each surah plays as one complete audio file for seamless, gapless playback.
+            Primary source: mp3quran.net with automatic fallback for maximum reliability.
           </p>
         </div>
       </SheetContent>

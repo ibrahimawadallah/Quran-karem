@@ -21,6 +21,8 @@ export interface Reciter {
   audioBaseUrl?: string;
   /** For surah-source reciters: the surah file prefix (e.g., "afs") */
   audioPrefix?: string;
+  /** mp3quran.net folder code for direct full-surah audio access */
+  mp3quranFolder?: string;
 }
 
 export interface AyahText {

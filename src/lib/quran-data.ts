@@ -117,41 +117,76 @@ export const SURAH_DATA: Surah[] = [
   { number: 114, arabicName: "الناس", englishName: "An-Nas", englishMeaning: "Mankind", ayahCount: 6, revelationType: "Meccan", description: "Seeks refuge in the Lord of mankind from the whisperings of Satan and evil-minded people." },
 ];
 
-// Reciter IDs match the islamic.network CDN surah-audio endpoint
-// URL pattern: https://cdn.islamic.network/quran/audio-surah/128/{id}/{surah_number}.mp3
+/**
+ * Reciters with full-surah audio support.
+ *
+ * Primary source: mp3quran.net (server8) — highly reliable, fast CDN
+ * Fallback source: cdn.islamic.network — backup
+ *
+ * mp3quran.net folder codes map to well-known reciter directories.
+ * Surah files: https://server8.mp3quran.net/{folder}/{NNN}.mp3
+ * where NNN is zero-padded surah number (001-114)
+ */
 export const RECITERS: Reciter[] = [
-  // Popular
-  { id: "ar.alafasy", name: "Mishary Rashid Alafasy", arabicName: "مشاري راشد العفاسي", country: "Kuwait", category: "Popular", style: "Murattal" },
-  { id: "ar.abdulbasitmurattal", name: "Abdul Basit Abdul Samad", arabicName: "عبدالباسط عبدالصمد", country: "Egypt", category: "Popular", style: "Murattal" },
-  { id: "ar.abdulbasitmujawwad", name: "Abdul Basit Abdul Samad (Mujawwad)", arabicName: "عبدالباسط عبدالصمد مجود", country: "Egypt", category: "Popular", style: "Mujawwad" },
-  { id: "ar.yasseraldossari", name: "Yasser Ad-Dosari", arabicName: "ياسر الدوسري", country: "Saudi Arabia", category: "Popular", style: "Murattal" },
-  { id: "ar.saudalshuraim", name: "Saoud Ash-Shuraym", arabicName: "سعود الشريم", country: "Saudi Arabia", category: "Popular", style: "Murattal" },
-  { id: "ar.mahershakhashiro", name: "Maher Al Muaiqly", arabicName: "ماهر المعيقلي", country: "Saudi Arabia", category: "Popular", style: "Murattal" },
-  // Egyptian
-  { id: "ar.muhammadayyub", name: "Muhammad Ayyub", arabicName: "محمد أيوب", country: "Egypt", category: "Egyptian", style: "Murattal" },
-  { id: "ar.muhammadsiddiqalminshawimujawwad", name: "Mohamed Siddiq El-Minshawi", arabicName: "محمد صديق المنشاوي", country: "Egypt", category: "Egyptian", style: "Mujawwad" },
-  { id: "ar.haniarrifai", name: "Hani Ar-Rifai", arabicName: "هاني الرفاعي", country: "Egypt", category: "Egyptian", style: "Murattal" },
-  { id: "ar.ahmedalajmi", name: "Ahmed Al-Ajamy", arabicName: "أحمد العجمي", country: "Egypt", category: "Egyptian", style: "Murattal" },
-  { id: "ar.mahmoudalialbanna", name: "Mahmoud Ali Al-Banna", arabicName: "محمود علي البنا", country: "Egypt", category: "Egyptian", style: "Murattal" },
-  { id: "ar.muhammadanwarshahat", name: "Mohammad Ash-Shahat", arabicName: "محمد الشحات", country: "Egypt", category: "Egyptian", style: "Murattal" },
+  // ─── Popular ───────────────────────────────────────────────────────────
+  { id: "ar.alafasy", name: "Mishary Rashid Alafasy", arabicName: "مشاري راشد العفاسي", country: "Kuwait", category: "Popular", style: "Murattal", mp3quranFolder: "afs" },
+  { id: "ar.abdulbasitmurattal", name: "Abdul Basit Abdul Samad", arabicName: "عبدالباسط عبدالصمد", country: "Egypt", category: "Popular", style: "Murattal", mp3quranFolder: "basit" },
+  { id: "ar.abdulbasitmujawwad", name: "Abdul Basit Abdul Samad (Mujawwad)", arabicName: "عبدالباسط عبدالصمد مجود", country: "Egypt", category: "Popular", style: "Mujawwad", mp3quranFolder: "basit_j" },
+  { id: "ar.husary", name: "Mahmoud Khalil Al-Husary", arabicName: "محمود خليل الحصري", country: "Egypt", category: "Popular", style: "Murattal", mp3quranFolder: "husary" },
+  { id: "ar.minshawi", name: "Mohamed Siddiq El-Minshawi", arabicName: "محمد صديق المنشاوي", country: "Egypt", category: "Popular", style: "Mujawwad", mp3quranFolder: "minsh" },
+  { id: "ar.yasseraldossari", name: "Yasser Ad-Dosari", arabicName: "ياسر الدوسري", country: "Saudi Arabia", category: "Popular", style: "Murattal", mp3quranFolder: "dosari" },
+  { id: "ar.saudalshuraim", name: "Saoud Ash-Shuraym", arabicName: "سعود الشريم", country: "Saudi Arabia", category: "Popular", style: "Murattal", mp3quranFolder: "shur" },
+  { id: "ar.mahershakhashiro", name: "Maher Al Muaiqly", arabicName: "ماهر المعيقلي", country: "Saudi Arabia", category: "Popular", style: "Murattal", mp3quranFolder: "maher" },
+
+  // ─── Egyptian ──────────────────────────────────────────────────────────
+  { id: "ar.muhammadayyub", name: "Muhammad Ayyub", arabicName: "محمد أيوب", country: "Egypt", category: "Egyptian", style: "Murattal", mp3quranFolder: "ayyub" },
+  { id: "ar.haniarrifai", name: "Hani Ar-Rifai", arabicName: "هاني الرفاعي", country: "Egypt", category: "Egyptian", style: "Murattal", mp3quranFolder: "rifai" },
+  { id: "ar.ahmedalajmi", name: "Ahmed Al-Ajamy", arabicName: "أحمد العجمي", country: "Egypt", category: "Egyptian", style: "Murattal", mp3quranFolder: "ajm" },
+  { id: "ar.mahmoudalialbanna", name: "Mahmoud Ali Al-Banna", arabicName: "محمود علي البنا", country: "Egypt", category: "Egyptian", style: "Murattal", mp3quranFolder: "banna" },
+  { id: "ar.muhammadanwarshahat", name: "Mohammad Ash-Shahat", arabicName: "محمد الشحات", country: "Egypt", category: "Egyptian", style: "Murattal", mp3quranFolder: "shahat" },
   { id: "ar.mustafaismail", name: "Mustafa Ismail", arabicName: "مصطفى إسماعيل", country: "Egypt", category: "Egyptian", style: "Murattal" },
-  // Saudi
-  { id: "ar.aliabdurrahmanalhuthaify", name: "Ali Al-Hudhaify", arabicName: "علي الحذيفي", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
-  { id: "ar.abdullahbasfar", name: "Abdullah Basfar", arabicName: "عبدالله بصفر", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
-  { id: "ar.bandarbalila", name: "Abdulrahman Al-Balila", arabicName: "عبدالرحمن البليهي", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
+
+  // ─── Saudi ─────────────────────────────────────────────────────────────
+  { id: "ar.aliabdurrahmanalhuthaify", name: "Ali Al-Hudhaify", arabicName: "علي الحذيفي", country: "Saudi Arabia", category: "Saudi", style: "Murattal", mp3quranFolder: "huthfi" },
+  { id: "ar.abdullahbasfar", name: "Abdullah Basfar", arabicName: "عبدالله بصفر", country: "Saudi Arabia", category: "Saudi", style: "Murattal", mp3quranFolder: "basfar" },
   { id: "ar.faresabbad", name: "Fares Abbaad", arabicName: "فارست عباد", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
-  { id: "ar.ibrahimalakhdar", name: "Ibrahim Al-Akhdar", arabicName: "إبراهيم الأخضر", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
-  { id: "ar.abdullahalmatrood", name: "Abdullah Al-Matrood", arabicName: "عبدالله المطرود", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
-  { id: "ar.salahalbudair", name: "Salah Al-Budair", arabicName: "صلاح البدير", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
-  { id: "ar.muhammadalluhaidan", name: "Muhammad Al-Luhaidan", arabicName: "محمد اللحيدان", country: "Saudi Arabia", category: "Saudi", style: "Murattal" },
-  // Other
+  { id: "ar.ibrahimalakhdar", name: "Ibrahim Al-Akhdar", arabicName: "إبراهيم الأخضر", country: "Saudi Arabia", category: "Saudi", style: "Murattal", mp3quranFolder: "akhdar" },
+  { id: "ar.abdullahalmatrood", name: "Abdullah Al-Matrood", arabicName: "عبدالله المطرود", country: "Saudi Arabia", category: "Saudi", style: "Murattal", mp3quranFolder: "matrod" },
+  { id: "ar.salahalbudair", name: "Salah Al-Budair", arabicName: "صلاح البدير", country: "Saudi Arabia", category: "Saudi", style: "Murattal", mp3quranFolder: "budair" },
+  { id: "ar.muhammadalluhaidan", name: "Muhammad Al-Luhaidan", arabicName: "محمد اللحيدان", country: "Saudi Arabia", category: "Saudi", style: "Murattal", mp3quranFolder: "luhaidan" },
+
+  // ─── Other ─────────────────────────────────────────────────────────────
   { id: "ar.ibrahimaldossari", name: "Ibrahim Al-Dossari", arabicName: "إبراهيم الدوسري", country: "Saudi Arabia", category: "Other", style: "Murattal" },
-  { id: "ar.nasseralqatami", name: "Nasser Al-Qatami", arabicName: "ناصر القطامي", country: "Saudi Arabia", category: "Other", style: "Murattal" },
-  { id: "ar.khaledalqahtani", name: "Khaled Al-Qahtani", arabicName: "خالد القحطاني", country: "Saudi Arabia", category: "Other", style: "Murattal" },
+  { id: "ar.nasseralqatami", name: "Nasser Al-Qatami", arabicName: "ناصر القطامي", country: "Saudi Arabia", category: "Other", style: "Murattal", mp3quranFolder: "qtami" },
+  { id: "ar.khaledalqahtani", name: "Khaled Al-Qahtani", arabicName: "خالد القحطاني", country: "Saudi Arabia", category: "Other", style: "Murattal", mp3quranFolder: "qhtani" },
   { id: "ar.abdulbariaththubaity", name: "Abdul Bari Ath-Thubaity", arabicName: "عبدالباري الثبيتي", country: "Saudi Arabia", category: "Other", style: "Murattal" },
 ];
 
-/** Build the full surah audio URL for a given reciter and surah number */
+/** Pad surah number to 3 digits for mp3quran.net URL */
+function padSurah(num: number): string {
+  return num.toString().padStart(3, "0");
+}
+
+/**
+ * Get the primary audio URL for a full surah.
+ * Uses mp3quran.net (fast, reliable CDN) when folder is available,
+ * falls back to cdn.islamic.network otherwise.
+ */
 export function getSurahAudioUrl(reciterId: string, surahNumber: number): string {
+  const reciter = RECITERS.find((r) => r.id === reciterId);
+
+  if (reciter?.mp3quranFolder) {
+    return `https://server8.mp3quran.net/${reciter.mp3quranFolder}/${padSurah(surahNumber)}.mp3`;
+  }
+
+  // Fallback to islamic.network CDN
+  return `https://cdn.islamic.network/quran/audio-surah/128/${reciterId}/${surahNumber}.mp3`;
+}
+
+/**
+ * Get the fallback audio URL for a full surah.
+ * Always returns the cdn.islamic.network URL as a backup.
+ */
+export function getFallbackAudioUrl(reciterId: string, surahNumber: number): string {
   return `https://cdn.islamic.network/quran/audio-surah/128/${reciterId}/${surahNumber}.mp3`;
 }

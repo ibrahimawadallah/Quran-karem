@@ -11,6 +11,8 @@ interface AudioState {
   isPlaying: boolean;
   currentReciter: string;
   isBuffering: boolean;
+  audioError: string | null;
+  isUsingFallback: boolean;
 
   // UI state - main page
   searchQuery: string;
@@ -39,6 +41,8 @@ interface AudioState {
   setCurrentReciter: (reciterId: string) => void;
   setReciter: (reciter: Reciter) => void;
   setIsBuffering: (buffering: boolean) => void;
+  setAudioError: (error: string | null) => void;
+  setIsUsingFallback: (using: boolean) => void;
   nextSurah: () => void;
   prevSurah: () => void;
   togglePlay: () => void;
@@ -79,6 +83,8 @@ export const useAudioStore = create<AudioState>((set, get) => {
     isPlaying: false,
     currentReciter: RECITERS[0].id, // Mishary Alafasy default
     isBuffering: false,
+    audioError: null,
+    isUsingFallback: false,
 
     // UI state - main page
     searchQuery: "",
@@ -122,6 +128,8 @@ export const useAudioStore = create<AudioState>((set, get) => {
         isPlaying: true,
         isPlayerVisible: true,
         isBuffering: true,
+        audioError: null,
+        isUsingFallback: false,
       });
     },
 
@@ -131,6 +139,8 @@ export const useAudioStore = create<AudioState>((set, get) => {
         isPlaying: true,
         isPlayerVisible: true,
         isBuffering: true,
+        audioError: null,
+        isUsingFallback: false,
       });
     },
 
@@ -148,6 +158,10 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
     setIsBuffering: (buffering) => set({ isBuffering: buffering }),
 
+    setAudioError: (error) => set({ audioError: error }),
+
+    setIsUsingFallback: (using) => set({ isUsingFallback: using }),
+
     nextSurah: () => {
       const { currentSurah } = get();
       const currentNum = currentSurah?.number ?? 0;
@@ -158,6 +172,8 @@ export const useAudioStore = create<AudioState>((set, get) => {
         currentSurah: surahInfo,
         isPlaying: true,
         isBuffering: true,
+        audioError: null,
+        isUsingFallback: false,
       });
     },
 
@@ -171,6 +187,8 @@ export const useAudioStore = create<AudioState>((set, get) => {
         currentSurah: surahInfo,
         isPlaying: true,
         isBuffering: true,
+        audioError: null,
+        isUsingFallback: false,
       });
     },
 
@@ -186,7 +204,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
     // Player visibility
     showPlayer: () => set({ isPlayerVisible: true }),
-    hidePlayer: () => set({ isPlayerVisible: false, isPlaying: false }),
+    hidePlayer: () => set({ isPlayerVisible: false, isPlaying: false, audioError: null }),
 
     // Surah modal
     setShowSurahModal: (show) => set({ showSurahModal: show }),
