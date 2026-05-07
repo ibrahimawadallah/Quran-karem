@@ -280,24 +280,6 @@ export const useAudioStore = create<AudioState>((set, get) => {
       })),
   };
 });
-    meccanCount,
-    medinanCount,
-    reciter: RECITERS[0],
-
-    // Audio actions
-    play: (surahNumber) => {
-      const surahInfo = getSurahInfo(surahNumber);
-      if (!surahInfo) return;
-      set({
-        currentSurah: surahInfo,
-        isPlaying: true,
-        isPlayerVisible: true,
-        isBuffering: true,
-        audioError: null,
-        isUsingFallback: false,
-        currentAyahInSurah: 1,  // Reset to first ayah
-      });
-    },
 
     playSurah: (surah) => {
       set({
