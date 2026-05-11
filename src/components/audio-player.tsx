@@ -12,13 +12,18 @@ import {
   Loader2,
   AlertCircle,
   RefreshCw,
+  Bookmark,
+  BookmarkCheck,
 } from "lucide-react";
 import { useAudioStore } from "@/lib/audio-store";
 import {
   getSurahAudioUrl,
   getFallbackAudioUrl,
+  getAyahTimings,
 } from "@/lib/quran-data";
+import { getSurahInfo } from "@/lib/quran-utils";
 import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function formatTime(seconds: number): string {
   if (!isFinite(seconds) || isNaN(seconds)) return "0:00";
@@ -53,41 +58,34 @@ function AudioWave({ isPlaying }: { isPlaying: boolean }) {
   );
 }
 
-// Ayah timing data for Surah Al-Fatiha (surah 1) - approximate timings in seconds
-// These would ideally come from the backend or be calculated based on audio analysis
-const AYAH_TIMINGS: Record<number, Record<number, number>> = {
-  1: { 1: 0, 2: 4, 3: 8, 4: 12, 5: 16, 6: 20, 7: 25 }, // Al-Fatiha approx timings
-};
+function getCurrentAyahFromTime(surahNumber: number, currentTime: number, totalAyahs: number, reciterId: string): number {
+  // Get timing data for this specific reciter and surah
+  const timings = getAyahTimings(surahNumber, reciterId);
 
-function getCurrentAyahFromTime(surahNumber: number, currentTime: number, totalAyahs: number): number {
-  // If we have timing data for this surah, use it
-  if (AYAH_TIMINGS[surahNumber]) {
-    const timings = AYAH_TIMINGS[surahNumber];
-    const ayahNumbers = Object.keys(timings).map(Number).sort((a, b) => a - b);
-    
-    for (let i = ayahNumbers.length - 1; i >= 0; i--) {
-      if (currentTime >= timings[ayahNumbers[i]]) {
-        return ayahNumbers[i];
-      }
+  // Add a small buffer to account for audio processing delays
+  const bufferedTime = Math.max(0, currentTime - 0.3); // Reduced buffer for more responsive sync
+
+  // Find which ayah corresponds to the current time
+  for (let i = timings.length - 1; i >= 0; i--) {
+    if (bufferedTime >= timings[i]) {
+      return Math.min(i + 1, totalAyahs); // Ensure we don't exceed total ayahs
     }
-    return 1;
   }
-  
-  // Otherwise, estimate based on equal distribution
-  if (totalAyahs <= 0) return 1;
-  const ayahDuration = 20; // Assume ~20 seconds per ayah on average
-  const estimatedAyah = Math.floor(currentTime / ayahDuration) + 1;
-  return Math.min(estimatedAyah, totalAyahs);
+
+  return 1; // Default to first ayah
 }
 
 export default function AudioPlayer() {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const preloadAudioRef = useRef<HTMLAudioElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const prevSurahKeyRef = useRef("");
   const fallbackAttemptedRef = useRef(false);
   const timeRef = useRef(0);
   const durationRef = useRef(0);
   const lastAyahRef = useRef(1);
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
 
   const {
     isPlayerVisible,
@@ -107,13 +105,45 @@ export default function AudioPlayer() {
     setIsUsingFallback,
     currentAyahInSurah,
     setCurrentAyah,
+    playbackSpeed,
+    setPlaybackSpeed,
+    saveBookmark,
+    loadBookmark,
+    clearBookmark,
   } = useAudioStore();
+
+  // Touch gesture handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    touchEndX.current = e.changedTouches[0].clientX;
+    handleSwipe();
+  };
+
+  const handleSwipe = () => {
+    const distance = touchStartX.current - touchEndX.current;
+    const minSwipeDistance = 50; // Minimum distance for swipe
+
+    if (Math.abs(distance) > minSwipeDistance) {
+      if (distance > 0) {
+        // Swipe left - next surah
+        nextSurah();
+      } else {
+        // Swipe right - previous surah
+        prevSurah();
+      }
+    }
+  };
 
   // Use state only for re-renders, synced from refs via RAF
   const [displayTime, setDisplayTime] = useState(0);
   const [displayDuration, setDisplayDuration] = useState(0);
   const [volume, setVolume] = useState(0.8);
   const [isMuted, setIsMuted] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [ayahProgress, setAyahProgress] = useState(0);
 
   // Unique key for the current surah+reciter combination
   const surahKey = currentSurah
@@ -147,11 +177,26 @@ export default function AudioPlayer() {
             const newAyah = getCurrentAyahFromTime(
               currentSurah.number,
               ct,
-              currentSurah.ayahCount
+              currentSurah.ayahCount,
+              currentReciter
             );
             if (newAyah !== lastAyahRef.current) {
+
               lastAyahRef.current = newAyah;
               setCurrentAyah(newAyah);
+              setAyahProgress(0); // Reset progress when ayah changes
+            } else {
+              // Calculate progress within current ayah
+              const timings = getAyahTimings(currentSurah.number, currentReciter);
+              if (timings.length > newAyah) {
+                const ayahStart = timings[newAyah - 1];
+                const ayahEnd = timings[newAyah] || dur; // Use duration if no next timing
+                const ayahDuration = ayahEnd - ayahStart;
+                if (ayahDuration > 0) {
+                  const progressInAyah = (ct - ayahStart) / ayahDuration;
+                  setAyahProgress(Math.max(0, Math.min(1, progressInAyah)));
+                }
+              }
             }
           }
         }
@@ -191,6 +236,8 @@ export default function AudioPlayer() {
     prevSurahKeyRef.current = surahKey;
     fallbackAttemptedRef.current = false;
 
+
+
     // Reset refs
     timeRef.current = 0;
     durationRef.current = 0;
@@ -200,7 +247,7 @@ export default function AudioPlayer() {
     setIsBuffering(true);
 
     loadAudio(primaryUrl, isPlaying);
-  }, [surahKey, primaryUrl, isPlaying, loadAudio, setAudioError, setIsUsingFallback, setIsBuffering]);
+  }, [surahKey, primaryUrl, isPlaying, loadAudio, setAudioError, setIsUsingFallback, setIsBuffering, currentReciter, currentSurah]);
 
   // Play/pause based on store state
   useEffect(() => {
@@ -219,7 +266,18 @@ export default function AudioPlayer() {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const onCanPlay = () => setIsBuffering(false);
+    const onCanPlay = () => {
+      setIsBuffering(false);
+
+      // Check for bookmark and seek to it
+      if (currentSurah && currentReciter) {
+        const surahKey = `${currentSurah.number}-${currentReciter}`;
+        const bookmarkTime = loadBookmark(surahKey);
+        if (bookmarkTime && bookmarkTime > 0) {
+          audio.currentTime = bookmarkTime;
+        }
+      }
+    };
     const onWaiting = () => setIsBuffering(true);
     const onPlaying = () => {
       setIsBuffering(false);
@@ -232,25 +290,33 @@ export default function AudioPlayer() {
       nextSurah();
     };
 
-    const onError = () => {
-      const audio = audioRef.current;
-      if (!audio) return;
+     const onError = (e: Event) => {
+       const audio = audioRef.current;
+       if (!audio) return;
 
-      setIsBuffering(false);
+       setIsBuffering(false);
 
-      // If primary failed and we haven't tried fallback yet, try fallback
-      if (!fallbackAttemptedRef.current && fallbackUrl) {
-        fallbackAttemptedRef.current = true;
-        setIsUsingFallback(true);
-        audio.src = fallbackUrl;
-        audio.load();
-        audio.play().catch(() => {});
-        return;
-      }
+       console.error('Audio load error:', {
+         currentSrc: audio.currentSrc,
+         error: e,
+         networkState: audio.networkState,
+         readyState: audio.readyState
+       });
 
-      // Both sources failed — show error
-      setAudioError("Unable to load audio. The reciter may not be available for this surah.");
-    };
+       // If primary failed and we haven't tried fallback yet, try fallback
+       if (!fallbackAttemptedRef.current && fallbackUrl && fallbackUrl !== audio.currentSrc) {
+         console.log('Trying fallback URL:', fallbackUrl);
+         fallbackAttemptedRef.current = true;
+         setIsUsingFallback(true);
+         audio.src = fallbackUrl;
+         audio.load();
+         audio.play().catch(() => {});
+         return;
+       }
+
+       // All sources failed — show error
+       setAudioError("Unable to load audio. Please check your internet connection or try a different reciter.");
+     };
 
     audio.addEventListener("canplay", onCanPlay);
     audio.addEventListener("waiting", onWaiting);
@@ -273,6 +339,67 @@ export default function AudioPlayer() {
     if (!audio) return;
     audio.volume = isMuted ? 0 : volume;
   }, [volume, isMuted]);
+
+  // Apply playback speed
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.playbackRate = playbackSpeed;
+  }, [playbackSpeed]);
+
+  // Preload next surah
+  const preloadNextSurah = useCallback(() => {
+    if (!currentSurah || !currentReciter) return;
+
+    const nextSurahNum = currentSurah.number >= 114 ? 1 : currentSurah.number + 1;
+    const nextSurah = getSurahInfo(nextSurahNum);
+    if (!nextSurah) return;
+
+    const preloadAudio = preloadAudioRef.current;
+    if (!preloadAudio) return;
+
+    const surahKey = `${nextSurah.number}-${currentReciter}`;
+    const primaryUrl = getSurahAudioUrl(nextSurah.number, currentReciter);
+
+    if (primaryUrl && preloadAudio.src !== primaryUrl) {
+      preloadAudio.src = primaryUrl;
+      preloadAudio.preload = "metadata";
+      preloadAudio.load();
+    }
+  }, [currentSurah, currentReciter]);
+
+  // Start preloading when surah changes
+  useEffect(() => {
+    if (isPlaying && currentSurah) {
+      // Preload immediately when starting to play
+      preloadNextSurah();
+
+      // Also preload when we're 30 seconds from the end
+      const checkPreload = () => {
+        const audio = audioRef.current;
+        if (!audio || !audio.duration) return;
+
+        const remainingTime = audio.duration - audio.currentTime;
+        if (remainingTime <= 30) {
+          preloadNextSurah();
+        }
+      };
+
+      const interval = setInterval(checkPreload, 5000); // Check every 5 seconds
+      return () => clearInterval(interval);
+    }
+  }, [isPlaying, currentSurah, preloadNextSurah]);
+
+  // Check bookmark status
+  useEffect(() => {
+    if (currentSurah && currentReciter) {
+      const surahKey = `${currentSurah.number}-${currentReciter}`;
+      const bookmarkTime = loadBookmark(surahKey);
+      setIsBookmarked(bookmarkTime !== null);
+    } else {
+      setIsBookmarked(false);
+    }
+  }, [currentSurah, currentReciter, loadBookmark]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -311,6 +438,46 @@ export default function AudioPlayer() {
           e.preventDefault();
           hidePlayer();
           break;
+        case "KeyN":
+          e.preventDefault();
+          nextSurah();
+          break;
+        case "KeyP":
+          e.preventDefault();
+          prevSurah();
+          break;
+        case "KeyB":
+          e.preventDefault();
+          if (currentSurah && currentReciter) {
+            const surahKey = `${currentSurah.number}-${currentReciter}`;
+            if (isBookmarked) {
+              clearBookmark(surahKey);
+              setIsBookmarked(false);
+            } else {
+              const audio = audioRef.current;
+              if (audio) {
+                saveBookmark(surahKey, audio.currentTime);
+                setIsBookmarked(true);
+              }
+            }
+          }
+          break;
+        case "Digit1":
+          e.preventDefault();
+          setPlaybackSpeed(0.5);
+          break;
+        case "Digit2":
+          e.preventDefault();
+          setPlaybackSpeed(1.0);
+          break;
+        case "Digit3":
+          e.preventDefault();
+          setPlaybackSpeed(1.5);
+          break;
+        case "Digit4":
+          e.preventDefault();
+          setPlaybackSpeed(2.0);
+          break;
       }
     };
 
@@ -348,23 +515,26 @@ export default function AudioPlayer() {
     []
   );
 
-  /** Retry loading audio */
-  const handleRetry = useCallback(() => {
-    if (!currentSurah) return;
-    fallbackAttemptedRef.current = false;
-    setAudioError(null);
-    setIsBuffering(true);
-    setIsUsingFallback(false);
-    timeRef.current = 0;
-    durationRef.current = 0;
+/** Retry loading audio */
+   const handleRetry = useCallback(() => {
+     if (!currentSurah) return;
+     fallbackAttemptedRef.current = false;
+     setAudioError(null);
+     setIsBuffering(true);
+     setIsUsingFallback(false);
+     timeRef.current = 0;
+     durationRef.current = 0;
+     // Reset ayah tracking
+     lastAyahRef.current = 0;
+     setCurrentAyah(1);
 
-    const audio = audioRef.current;
-    if (audio) {
-      audio.src = primaryUrl;
-      audio.load();
-      audio.play().catch(() => {});
-    }
-  }, [currentSurah, primaryUrl, setAudioError, setIsBuffering, setIsUsingFallback]);
+     const audio = audioRef.current;
+     if (audio) {
+       audio.src = primaryUrl;
+       audio.load();
+       audio.play().catch(() => {});
+     }
+   }, [currentSurah, primaryUrl, setAudioError, setIsBuffering, setIsUsingFallback, setCurrentAyah]);
 
   if (!isPlayerVisible || !currentSurah) return null;
 
@@ -374,16 +544,19 @@ export default function AudioPlayer() {
   return (
     <>
       <audio ref={audioRef} preload="auto" />
+      <audio ref={preloadAudioRef} preload="none" style={{ display: 'none' }} />
 
        {/* Fixed bottom bar */}
        <div
-         className="fixed bottom-0 left-0 right-0 z-50 border-t border-purple-500/20"
-         style={{
-           background: "rgba(10, 5, 24, 0.95)",
-           backdropFilter: "blur(20px)",
-           WebkitBackdropFilter: "blur(20px)",
-         }}
-       >
+          className="fixed bottom-0 left-0 right-0 z-50 border-t border-purple-500/20"
+          style={{
+            background: "rgba(10, 5, 24, 0.95)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+          }}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
          {/* Progress bar (thin, clickable) */}
          <div
            ref={progressRef}
@@ -480,14 +653,44 @@ export default function AudioPlayer() {
                )}
              </button>
 
-             {/* Next */}
-             <button
-               onClick={nextSurah}
-               className="p-1.5 sm:p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-purple-500/10 active:scale-95 touch-manipulation"
-               aria-label="Next surah"
-             >
-               <SkipForward className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-             </button>
+              {/* Next */}
+              <button
+                onClick={nextSurah}
+                className="p-1.5 sm:p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-purple-500/10 active:scale-95 touch-manipulation"
+                aria-label="Next surah"
+              >
+                <SkipForward className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </button>
+
+              {/* Bookmark */}
+              <button
+                onClick={() => {
+                  if (!currentSurah || !currentReciter) return;
+                  const audio = audioRef.current;
+                  if (!audio) return;
+
+                  const surahKey = `${currentSurah.number}-${currentReciter}`;
+                  if (isBookmarked) {
+                    clearBookmark(surahKey);
+                    setIsBookmarked(false);
+                  } else {
+                    saveBookmark(surahKey, audio.currentTime);
+                    setIsBookmarked(true);
+                  }
+                }}
+                className={`p-1.5 sm:p-2 transition-colors rounded-full active:scale-95 touch-manipulation ${
+                  isBookmarked
+                    ? "text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+                    : "text-muted-foreground hover:text-foreground hover:bg-purple-500/10"
+                }`}
+                aria-label={isBookmarked ? "Remove bookmark" : "Bookmark current position"}
+              >
+                {isBookmarked ? (
+                  <BookmarkCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                ) : (
+                  <Bookmark className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                )}
+              </button>
            </div>
 
            {/* Right: Time + Volume + Close */}
@@ -523,9 +726,29 @@ export default function AudioPlayer() {
                    className="cursor-pointer"
                  />
                </div>
-             </div>
+              </div>
 
-             {/* Close */}
+              {/* Playback Speed */}
+              <div className="hidden sm:flex items-center gap-1">
+                <Select
+                  value={playbackSpeed.toString()}
+                  onValueChange={(value) => setPlaybackSpeed(parseFloat(value))}
+                >
+                  <SelectTrigger className="w-16 h-7 text-[10px] bg-transparent border-purple-500/20 hover:border-purple-500/40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0.5">0.5x</SelectItem>
+                    <SelectItem value="0.75">0.75x</SelectItem>
+                    <SelectItem value="1.0">1x</SelectItem>
+                    <SelectItem value="1.25">1.25x</SelectItem>
+                    <SelectItem value="1.5">1.5x</SelectItem>
+                    <SelectItem value="2.0">2x</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Close */}
              <button
                onClick={hidePlayer}
                className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-white/10 active:scale-95 touch-manipulation"

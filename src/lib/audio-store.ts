@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { RECITERS, SURAH_DATA } from "./quran-data";
 import type { Surah, Reciter, TranslationLanguage } from "./quran-types";
+import { getSurahInfo } from "./quran-utils";
 
 type RevelationFilter = "All" | "Meccan" | "Medinan";
 type ViewMode = "list" | "grid";
@@ -14,6 +15,10 @@ interface AudioState {
   audioError: string | null;
   isUsingFallback: boolean;
   currentAyahInSurah: number;  // Track current ayah (1-based)
+  playbackSpeed: number;  // Playback speed (0.5 to 2.0)
+  bookmarks: Record<string, number>;  // Bookmarks: surahKey -> currentTime
+  theme: 'light' | 'dark' | 'system';  // Theme preference
+  recentlyPlayed: number[];  // Recently played surah numbers
 
   // Translation state
   selectedTranslations: TranslationLanguage[];
@@ -49,6 +54,12 @@ interface AudioState {
   setAudioError: (error: string | null) => void;
   setIsUsingFallback: (using: boolean) => void;
   setCurrentAyah: (ayahNumber: number) => void;
+  setPlaybackSpeed: (speed: number) => void;
+  saveBookmark: (surahKey: string, currentTime: number) => void;
+  loadBookmark: (surahKey: string) => number | null;
+  clearBookmark: (surahKey: string) => void;
+  setTheme: (theme: 'light' | 'dark' | 'system') => void;
+  addToRecentlyPlayed: (surahNumber: number) => void;
   nextSurah: () => void;
   prevSurah: () => void;
   togglePlay: () => void;
@@ -78,10 +89,52 @@ interface AudioState {
   toggleReciterPanel: () => void;
 }
 
-/** Get surah info by surah number */
-export function getSurahInfo(surahNumber: number) {
-  return SURAH_DATA.find((s) => s.number === surahNumber);
-}
+
+
+// Load bookmarks from localStorage
+const loadBookmarks = (): Record<string, number> => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const stored = localStorage.getItem('qalam-bookmarks');
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+};
+
+// Apply theme to document
+const applyTheme = (theme: 'light' | 'dark' | 'system') => {
+  if (typeof window === 'undefined') return;
+
+  const root = document.documentElement;
+  const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  const effectiveTheme = theme === 'system' ? systemTheme : theme;
+
+  root.classList.remove('light', 'dark');
+  root.classList.add(effectiveTheme);
+};
+
+// Load theme from localStorage
+const loadTheme = (): 'light' | 'dark' | 'system' => {
+  if (typeof window === 'undefined') return 'system';
+  try {
+    const stored = localStorage.getItem('qalam-theme');
+    return (stored as 'light' | 'dark' | 'system') || 'system';
+  } catch {
+    return 'system';
+  }
+};
+
+// Load recently played from localStorage
+const loadRecentlyPlayed = (): number[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const stored = localStorage.getItem('qalam-recently-played');
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
 
 export const useAudioStore = create<AudioState>((set, get) => {
   const meccanCount = SURAH_DATA.filter((s) => s.revelationType === "Meccan").length;
@@ -96,6 +149,10 @@ export const useAudioStore = create<AudioState>((set, get) => {
     audioError: null,
     isUsingFallback: false,
     currentAyahInSurah: 1,  // Start at first ayah
+    playbackSpeed: 1.0,  // Normal speed
+    bookmarks: loadBookmarks(),  // Load bookmarks from localStorage
+    theme: loadTheme(),  // Load theme from localStorage
+    recentlyPlayed: loadRecentlyPlayed(),  // Load recently played from localStorage
 
     // Translation state
     selectedTranslations: ['english'],
@@ -159,6 +216,8 @@ export const useAudioStore = create<AudioState>((set, get) => {
         isUsingFallback: false,
         currentAyahInSurah: 1,  // Reset to first ayah
       });
+      // Add to recently played
+      get().addToRecentlyPlayed(surah.number);
     },
 
     setIsPlaying: (playing) => set({ isPlaying: playing }),
@@ -180,6 +239,66 @@ export const useAudioStore = create<AudioState>((set, get) => {
     setIsUsingFallback: (using) => set({ isUsingFallback: using }),
 
     setCurrentAyah: (ayahNumber) => set({ currentAyahInSurah: ayahNumber }),
+
+    setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
+
+    saveBookmark: (surahKey, currentTime) => {
+      const bookmarks = { ...get().bookmarks };
+      bookmarks[surahKey] = currentTime;
+      set({ bookmarks });
+
+      // Persist to localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('qalam-bookmarks', JSON.stringify(bookmarks));
+      }
+    },
+
+    loadBookmark: (surahKey) => {
+      const { bookmarks } = get();
+      return bookmarks[surahKey] || null;
+    },
+
+    clearBookmark: (surahKey) => {
+      const bookmarks = { ...get().bookmarks };
+      delete bookmarks[surahKey];
+      set({ bookmarks });
+
+      // Persist to localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('qalam-bookmarks', JSON.stringify(bookmarks));
+      }
+    },
+
+    setTheme: (theme) => {
+      set({ theme });
+
+      // Persist to localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('qalam-theme', theme);
+      }
+
+      // Apply theme immediately
+      applyTheme(theme);
+    },
+
+    addToRecentlyPlayed: (surahNumber) => {
+      const recentlyPlayed = [...get().recentlyPlayed];
+      // Remove if already exists
+      const index = recentlyPlayed.indexOf(surahNumber);
+      if (index > -1) {
+        recentlyPlayed.splice(index, 1);
+      }
+      // Add to beginning
+      recentlyPlayed.unshift(surahNumber);
+      // Keep only last 10
+      const trimmed = recentlyPlayed.slice(0, 10);
+      set({ recentlyPlayed: trimmed });
+
+      // Persist to localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('qalam-recently-played', JSON.stringify(trimmed));
+      }
+    },
 
     nextSurah: () => {
       const { currentSurah } = get();
