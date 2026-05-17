@@ -1,11 +1,16 @@
 import { dirname } from "path";
 import { fileURLToPath } from "url";
+import nextPlugin from "@next/eslint-plugin-next";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const eslintConfig = [{
+  plugins: {
+    "@next/next": nextPlugin,
+  },
   rules: {
+    ...nextPlugin.rules,
     "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/no-unused-vars": "off",
     "@typescript-eslint/no-non-null-assertion": "off",
