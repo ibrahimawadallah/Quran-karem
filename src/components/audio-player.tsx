@@ -144,7 +144,7 @@ export default function AudioPlayer() {
   const [isMuted, setIsMuted] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [ayahProgress, setAyahProgress] = useState(0);
-  const [apiAudioUrl, setApiAudioUrl] = useState('');
+  const [audioSrc, setAudioSrc] = useState('');
 
   // Unique key for the current surah+reciter combination
   const surahKey = currentSurah
@@ -230,16 +230,24 @@ export default function AudioPlayer() {
     []
   );
 
-  // Fetch audio URL from API when surah or reciter changes
+  // Fetch audio URL directly when surah or reciter changes
   useEffect(() => {
     if (!currentSurah || !currentReciter) return;
 
     const fetchAudioUrl = async () => {
       try {
-        const res = await fetch(`/api/audio-url?surah=${currentSurah.number}&reciter=${currentReciter}`);
+        const reciterMap: Record<string, string> = {
+          'ar.alafasy': 'ar.alafasy',
+          'ar.abdulbasitmujawwad': 'ar.abdulbasit',
+          'ar.abdulbasitmurattal': 'ar.abdulbasit',
+          'ar.husary': 'ar.husary',
+          'ar.saudalshuraim': 'ar.shuraym',
+        };
+        const apiReciter = reciterMap[currentReciter] || 'ar.alafasy';
+        const res = await fetch(`https://api.alquran.cloud/v1/surah/${currentSurah.number}/${apiReciter}`);
         const data = await res.json();
-        if (data.audioUrl) {
-          setApiAudioUrl(data.audioUrl);
+        if (data.data?.ayahs?.[0]?.audio) {
+          setAudioSrc(data.data.ayahs[0].audio);
         }
       } catch (err) {
         console.error('Failed to fetch audio URL:', err);
@@ -249,9 +257,9 @@ export default function AudioPlayer() {
     fetchAudioUrl();
   }, [currentSurah, currentReciter]);
 
-  // Load new audio when surah or reciter changes
+  // Load new audio when audioSrc changes
   useEffect(() => {
-    if (!apiAudioUrl && !primaryUrl) return;
+    if (!audioSrc) return;
     if (prevSurahKeyRef.current === surahKey) return;
     prevSurahKeyRef.current = surahKey;
     fallbackAttemptedRef.current = false;
@@ -264,12 +272,8 @@ export default function AudioPlayer() {
     setIsUsingFallback(false);
     setIsBuffering(true);
 
-    // Use API URL if available, otherwise fall back to primaryUrl
-    const urlToUse = apiAudioUrl || primaryUrl;
-    if (urlToUse) {
-      loadAudio(urlToUse, isPlaying);
-    }
-  }, [surahKey, apiAudioUrl, primaryUrl, isPlaying, loadAudio, setAudioError, setIsUsingFallback, setIsBuffering, currentReciter, currentSurah]);
+    loadAudio(audioSrc, isPlaying);
+  }, [surahKey, audioSrc, isPlaying, loadAudio, setAudioError, setIsUsingFallback, setIsBuffering]);
 
   // Play/pause based on store state
   useEffect(() => {
@@ -551,13 +555,13 @@ export default function AudioPlayer() {
      setCurrentAyah(1);
 
      const audio = audioRef.current;
-     const urlToUse = apiAudioUrl || primaryUrl;
+     const urlToUse = audioSrc || primaryUrl;
      if (audio && urlToUse) {
        audio.src = urlToUse;
        audio.load();
        audio.play().catch(() => {});
      }
-   }, [currentSurah, apiAudioUrl, primaryUrl, setAudioError, setIsBuffering, setIsUsingFallback, setCurrentAyah]);
+   }, [currentSurah, audioSrc, primaryUrl, setAudioError, setIsBuffering, setIsUsingFallback, setCurrentAyah]);
 
   if (!isPlayerVisible || !currentSurah) return null;
 
