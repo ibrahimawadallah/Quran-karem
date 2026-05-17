@@ -32,10 +32,8 @@ export async function GET(
       );
     }
 
-    // Map Quran.com reciter ID to alquran.cloud reciter ID
     const alquranReciter = RECITER_MAP[reciterId] || 'ar.alafasy';
 
-    // Fetch per-ayah audio URLs from alquran.cloud
     const res = await fetch(
       `https://api.alquran.cloud/v1/surah/${surahNumber}/${alquranReciter}`,
       { signal: request.signal }
@@ -57,33 +55,32 @@ export async function GET(
       );
     }
 
-    // Get audio duration for each ayah using HEAD requests
     const ayahs = data.data.ayahs;
     const timings: { timestamp: number; ayahKey: string }[] = [];
     let cumulativeTime = 0;
 
-    // Fetch durations in parallel (max 10 at a time to avoid rate limiting)
-    const batchSize = 10;
+    const batchSize = 5;
     for (let i = 0; i < ayahs.length; i += batchSize) {
       const batch = ayahs.slice(i, i + batchSize);
       const durationPromises = batch.map(async (ayah: any) => {
         try {
           const audioUrl = ayah.audio;
-          // Use HEAD request to get content-length, estimate duration
-          // MP3 at 64kbps: ~8KB per second
           const headRes = await fetch(audioUrl, {
             method: 'HEAD',
             signal: request.signal,
+            cache: 'no-store',
           });
           const contentLength = parseInt(
             headRes.headers.get('content-length') || '0',
             10
           );
-          // Estimate duration: contentLength / (64000 / 8) = contentLength / 8000
-          const duration = contentLength / 8000;
+          // MP3 at 128kbps: ~16KB per second
+          const duration = contentLength > 0 ? contentLength / 16000 : (ayah.text.length * 0.08);
           return { ayahKey: ayah.verse_key || `${surahNumber}:${ayah.numberInSurah}`, duration };
         } catch {
-          return { ayahKey: ayah.verse_key || `${surahNumber}:${ayah.numberInSurah}`, duration: 0 };
+          // Fallback: estimate based on text length
+          const duration = ayah.text.length * 0.08;
+          return { ayahKey: ayah.verse_key || `${surahNumber}:${ayah.numberInSurah}`, duration };
         }
       });
 
