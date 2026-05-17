@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAudioStore } from "@/lib/audio-store";
 import { getSurahInfo } from "@/lib/quran-utils";
 import type { SurahText, AyahText, TranslationLanguage } from "@/lib/quran-types";
+import { TRANSLATION_LANGUAGES } from "@/lib/quran-types";
 import TranslationSelector from '@/components/translation-selector';
 
 export default function SurahReadingModal() {
@@ -37,6 +38,9 @@ export default function SurahReadingModal() {
   const [surahText, setSurahText] = useState<SurahText | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tafsirText, setTafsirText] = useState<Record<string, string>>({});
+  const [loadingTafsir, setLoadingTafsir] = useState(false);
+  const [showTafsir, setShowTafsir] = useState(false);
   const cacheRef = useRef<Map<number, SurahText>>(new Map());
   const ayahRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -85,6 +89,28 @@ export default function SurahReadingModal() {
       fetchSurahText();
     }
   }, [showSurahModal, surahNumber, fetchSurahText]);
+
+  // Fetch tafsir when surah loads
+  useEffect(() => {
+    if (!surahNumber || !showTafsir) return;
+    
+    const fetchTafsir = async () => {
+      setLoadingTafsir(true);
+      try {
+        const res = await fetch(`/api/tafsir/${surahNumber}`);
+        const data = await res.json();
+        if (data.byVerseKey) {
+          setTafsirText(data.byVerseKey);
+        }
+      } catch (err) {
+        console.error('Failed to fetch tafsir:', err);
+      } finally {
+        setLoadingTafsir(false);
+      }
+    };
+    
+    fetchTafsir();
+  }, [surahNumber, showTafsir]);
 
   // Auto-scroll to the current playing ayah when it changes
   useEffect(() => {
@@ -193,6 +219,17 @@ export default function SurahReadingModal() {
                 aria-label="Close"
               >
                 <X className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+
+              {/* Tafsir toggle */}
+              <button
+                onClick={() => setShowTafsir(!showTafsir)}
+                className={`p-2 rounded-full transition-all active:scale-95 touch-manipulation ${
+                  showTafsir ? 'bg-purple-500/20 text-purple-400' : 'text-muted-foreground hover:text-purple-400 hover:bg-white/10'
+                }`}
+                aria-label="Toggle tafsir"
+              >
+                <span className="text-xs font-bold">ت</span>
               </button>
             </div>
           </div>
@@ -365,6 +402,16 @@ export default function SurahReadingModal() {
                         </p>
                       );
                     })}
+
+                    {/* Tafsir display */}
+                    {showTafsir && tafsirText[`${surahNumber}:${ayah.numberInSurah}`] && (
+                      <div className="mt-2 ml-9 sm:ml-11 p-2 bg-purple-900/20 rounded-lg border border-purple-500/20">
+                        <p className="text-xs text-purple-300 mb-1 font-semibold">Tafsir (Ibn Kathir)</p>
+                        <p className="text-xs text-gray-400 leading-relaxed">
+                          {tafsirText[`${surahNumber}:${ayah.numberInSurah}`].replace(/<[^>]*>/g, '').slice(0, 300)}...
+                        </p>
+                      </div>
+                    )}
                   </div>
                 );
               })}
