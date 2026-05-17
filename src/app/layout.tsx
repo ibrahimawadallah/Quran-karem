@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   },
   manifest: "/manifest.json",
   openGraph: {
-    title: "Qalam - Quran Kareem",
+title: "Qalam - Quran Kareem - Full Surah Audio & Translations",
     description: "A premium Quran Kareem streaming application by MedTechAI Arab Organization",
     type: "website",
     url: "https://quran.medtechai.net",
