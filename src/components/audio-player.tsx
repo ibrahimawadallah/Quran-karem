@@ -19,7 +19,6 @@ import { useAudioStore } from "@/lib/audio-store";
 import {
   getSurahAudioUrl,
   getFallbackAudioUrl,
-  getAyahTimings,
 } from "@/lib/quran-data";
 import { getSurahInfo } from "@/lib/quran-utils";
 import { Slider } from "@/components/ui/slider";
@@ -58,21 +57,18 @@ function AudioWave({ isPlaying }: { isPlaying: boolean }) {
   );
 }
 
-function getCurrentAyahFromTime(surahNumber: number, currentTime: number, totalAyahs: number, reciterId: string): number {
-  // Get timing data for this specific reciter and surah
-  const timings = getAyahTimings(surahNumber, reciterId);
+function getCurrentAyahFromTime(currentTime: number, totalAyahs: number, timings: number[]): number {
+  if (!timings || timings.length === 0) return 1;
 
-  // Add a small buffer to account for audio processing delays
-  const bufferedTime = Math.max(0, currentTime - 0.3); // Reduced buffer for more responsive sync
+  const bufferedTime = Math.max(0, currentTime - 0.3);
 
-  // Find which ayah corresponds to the current time
   for (let i = timings.length - 1; i >= 0; i--) {
     if (bufferedTime >= timings[i]) {
-      return Math.min(i + 1, totalAyahs); // Ensure we don't exceed total ayahs
+      return Math.min(i + 1, totalAyahs);
     }
   }
 
-  return 1; // Default to first ayah
+  return 1;
 }
 
 export default function AudioPlayer() {
@@ -145,6 +141,7 @@ export default function AudioPlayer() {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [ayahProgress, setAyahProgress] = useState(0);
   const [audioSrc, setAudioSrc] = useState('');
+  const ayahTimingsRef = useRef<number[]>([]);
 
   // Unique key for the current surah+reciter combination
   const surahKey = currentSurah
@@ -176,10 +173,9 @@ export default function AudioPlayer() {
           // Update current ayah based on time
           if (currentSurah) {
             const newAyah = getCurrentAyahFromTime(
-              currentSurah.number,
               ct,
               currentSurah.ayahCount,
-              currentReciter
+              ayahTimingsRef.current
             );
             if (newAyah !== lastAyahRef.current) {
 
@@ -188,7 +184,7 @@ export default function AudioPlayer() {
               setAyahProgress(0); // Reset progress when ayah changes
             } else {
               // Calculate progress within current ayah
-              const timings = getAyahTimings(currentSurah.number, currentReciter);
+              const timings = ayahTimingsRef.current;
               if (timings.length > newAyah) {
                 const ayahStart = timings[newAyah - 1];
                 const ayahEnd = timings[newAyah] || dur; // Use duration if no next timing
@@ -229,6 +225,45 @@ export default function AudioPlayer() {
     },
     []
   );
+
+  // Fetch real ayah timings from API
+  useEffect(() => {
+    if (!currentSurah || !currentReciter) return;
+
+    const fetchTimings = async () => {
+      try {
+        const reciterMap: Record<string, number> = {
+          'ar.alafasy': 7,
+          'ar.abdulbasitmujawwad': 1,
+          'ar.abdulbasitmurattal': 2,
+          'ar.husary': 6,
+          'ar.husarymuallim': 12,
+          'ar.saudalshuraim': 10,
+          'ar.minshawi': 9,
+          'ar.minshawimujawwad': 8,
+          'ar.abdurrahmaansudais': 3,
+          'ar.abubakralshatri': 4,
+          'ar.hanirifai': 5,
+          'ar.tablawi': 11,
+        };
+        const quranComReciterId = reciterMap[currentReciter] || 7;
+        const res = await fetch(`/api/timing/${currentSurah.number}?reciter=${quranComReciterId}`);
+        const data = await res.json();
+        if (data.timings && Array.isArray(data.timings)) {
+          // Convert timestamps (milliseconds) to seconds and extract unique ayah start times
+          const timings = data.timings
+            .map((t: { timestamp: number; ayahKey: string }) => t.timestamp / 1000)
+            .sort((a: number, b: number) => a - b);
+          ayahTimingsRef.current = timings;
+        }
+      } catch (err) {
+        console.error('Failed to fetch timing data:', err);
+        ayahTimingsRef.current = [];
+      }
+    };
+
+    fetchTimings();
+  }, [currentSurah, currentReciter]);
 
   // Fetch full surah audio URL directly when surah or reciter changes
   useEffect(() => {
