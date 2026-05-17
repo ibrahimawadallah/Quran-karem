@@ -5,6 +5,7 @@ import { useState } from 'react';
 export default function Header() {
   const { toggleReciterPanel } = useAudioStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   return (
     <header className="sticky top-0 z-40 border-b border-purple-500/10 bg-[rgba(10,5,24,0.7)] backdrop-blur-xl supports-[backdrop-filter]:bg-[rgba(10,5,24,0.5)]">
          <div className="max-w-6xl mx-auto px-3 sm:px-4 h-14 flex items-center justify-between">
