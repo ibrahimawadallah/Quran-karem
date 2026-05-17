@@ -230,24 +230,32 @@ export default function AudioPlayer() {
     []
   );
 
-  // Fetch audio URL directly when surah or reciter changes
+  // Fetch full surah audio URL directly when surah or reciter changes
   useEffect(() => {
     if (!currentSurah || !currentReciter) return;
 
     const fetchAudioUrl = async () => {
       try {
-        const reciterMap: Record<string, string> = {
-          'ar.alafasy': 'ar.alafasy',
-          'ar.abdulbasitmujawwad': 'ar.abdulbasit',
-          'ar.abdulbasitmurattal': 'ar.abdulbasit',
-          'ar.husary': 'ar.husary',
-          'ar.saudalshuraim': 'ar.shuraym',
+        // Map to Quran.com API reciter IDs
+        const reciterMap: Record<string, number> = {
+          'ar.alafasy': 7,
+          'ar.abdulbasitmujawwad': 1,
+          'ar.abdulbasitmurattal': 2,
+          'ar.husary': 6,
+          'ar.husarymuallim': 12,
+          'ar.saudalshuraim': 10,
+          'ar.minshawi': 9,
+          'ar.minshawimujawwad': 8,
+          'ar.abdurrahmaansudais': 3,
+          'ar.abubakralshatri': 4,
+          'ar.hanirifai': 5,
+          'ar.tablawi': 11,
         };
-        const apiReciter = reciterMap[currentReciter] || 'ar.alafasy';
-        const res = await fetch(`https://api.alquran.cloud/v1/surah/${currentSurah.number}/${apiReciter}`);
+        const quranComReciterId = reciterMap[currentReciter] || 7;
+        const res = await fetch(`https://api.quran.com/api/v4/chapter_recitations/${quranComReciterId}?chapter=${currentSurah.number}`);
         const data = await res.json();
-        if (data.data?.ayahs?.[0]?.audio) {
-          setAudioSrc(data.data.ayahs[0].audio);
+        if (data.audio_files?.[0]?.audio_url) {
+          setAudioSrc(data.audio_files[0].audio_url);
         }
       } catch (err) {
         console.error('Failed to fetch audio URL:', err);
