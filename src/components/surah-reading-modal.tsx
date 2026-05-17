@@ -10,7 +10,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAudioStore, getSurahInfo } from "@/lib/audio-store";
+import { useAudioStore } from "@/lib/audio-store";
+import { getSurahInfo } from "@/lib/quran-utils";
 import type { SurahText, AyahText, TranslationLanguage } from "@/lib/quran-types";
 import TranslationSelector from '@/components/translation-selector';
 
