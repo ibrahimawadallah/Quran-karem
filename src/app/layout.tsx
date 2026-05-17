@@ -32,8 +32,8 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://quran.medtechai.net"),
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
       { url: "/logo.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
     ],
     apple: "/logo.jpg",
   },
@@ -80,6 +80,9 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Quran Kareem" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="format-detection" content="telephone=no" />
+        <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="apple-touch-icon" href="/logo.jpg" />
         <link
           href="https://fonts.googleapis.com/css2?family=Scheherazade+New:wght@400;500;600;700&display=swap"
           rel="stylesheet"
