@@ -19,11 +19,10 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   title: "Quran Kareem - Listen to Full Surah Audio & Translations",
   description:
-    "Qalam (قَلَم) - A premium Quran Kareem streaming application by MedTechAI Arab Organization. Listen to the Holy Quran recited by world-renowned Qaris with beautiful gapless audio streaming, reading mode, and more.",
+    "Quran Kareem - A premium Quran streaming application by MedTechAI Arab Organization. Listen to the Holy Quran recited by world-renowned Qaris with beautiful gapless audio streaming, reading mode, and more.",
   keywords: [
     "Quran",
     "Quran Kareem",
-    "Qalam",
     "Islamic",
     "Quran Streaming",
     "Qari",
@@ -32,22 +31,25 @@ export const metadata: Metadata = {
   ],
   metadataBase: new URL("https://quran.medtechai.net"),
   icons: {
-    icon: "/favicon.jpg",
-    apple: "/mushaf-logo.jpg",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/logo.svg", type: "image/svg+xml" },
+    ],
+    apple: "/logo.jpg",
   },
   manifest: "/manifest.json",
   openGraph: {
-title: "Qalam - Quran Kareem - Full Surah Audio & Translations",
-    description: "A premium Quran Kareem streaming application by MedTechAI Arab Organization",
+    title: "Quran Kareem - Full Surah Audio & Translations",
+    description: "A premium Quran streaming application by MedTechAI Arab Organization",
     type: "website",
     url: "https://quran.medtechai.net",
-    siteName: "Qalam - Quran Kareem",
+    siteName: "Quran Kareem",
     images: [
       {
-        url: "/mushaf-logo.jpg",
+        url: "/logo.jpg",
         width: 512,
         height: 512,
-        alt: "Qalam Quran App",
+        alt: "Quran Kareem App",
       },
     ],
   },
@@ -57,10 +59,10 @@ title: "Qalam - Quran Kareem - Full Surah Audio & Translations",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Qalam",
+    title: "Quran Kareem",
   },
   mobileWebAppCapable: true,
-  applicationName: "Qalam Quran",
+  applicationName: "Quran Kareem",
 };
 
 export default function RootLayout({
@@ -75,7 +77,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#fbbf24" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Qalam" />
+        <meta name="apple-mobile-web-app-title" content="Quran Kareem" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="format-detection" content="telephone=no" />
         <link

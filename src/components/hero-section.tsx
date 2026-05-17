@@ -21,8 +21,8 @@ export default function HeroSection() {
         <div className="flex items-center justify-center gap-3 mb-6">
           <div className="w-12 h-12 rounded-xl overflow-hidden shadow-lg shadow-amber-500/20 ring-2 ring-amber-500/30">
             <Image
-              src="/mushaf-logo.jpg"
-              alt="Qalam - Quran Mushaf"
+              src="/logo.jpg"
+              alt="Quran Kareem"
               width={48}
               height={48}
               className="w-full h-full object-cover"
@@ -33,7 +33,7 @@ export default function HeroSection() {
             className="text-2xl font-bold bg-gradient-to-r from-amber-300 to-amber-500 bg-clip-text text-transparent"
             style={{ fontFamily: 'var(--font-space-grotesk), "Space Grotesk", sans-serif' }}
           >
-            Qalam
+            Quran Kareem
           </span>
         </div>
 

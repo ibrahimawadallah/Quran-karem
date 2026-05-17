@@ -73,7 +73,7 @@ export default function InstallPrompt() {
           </div>
           
           <div className="flex-1 min-w-0">
-            <h3 className="text-white font-semibold text-sm mb-1">Install Qalam App</h3>
+            <h3 className="text-white font-semibold text-sm mb-1">Install Quran Kareem App</h3>
             
             {isIOS ? (
               <p className="text-gray-300 text-xs leading-relaxed">
@@ -81,7 +81,7 @@ export default function InstallPrompt() {
               </p>
             ) : (
               <p className="text-gray-300 text-xs leading-relaxed">
-                Install Qalam for a better experience with quick access from your home screen
+                Install Quran Kareem for a better experience with quick access from your home screen
               </p>
             )}
             

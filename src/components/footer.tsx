@@ -13,8 +13,8 @@ export default function Footer() {
           <div className="flex items-center gap-2 mb-3">
             <div className="w-8 h-8 rounded-lg overflow-hidden ring-1 ring-amber-500/30">
               <Image
-                src="/mushaf-logo.jpg"
-                alt="Qalam"
+                src="/logo.jpg"
+                alt="Quran Kareem"
                 width={32}
                 height={32}
                 className="w-full h-full object-cover"
@@ -24,7 +24,7 @@ export default function Footer() {
               className="text-lg font-bold bg-gradient-to-r from-amber-300 to-amber-500 bg-clip-text text-transparent"
               style={{ fontFamily: 'var(--font-space-grotesk), "Space Grotesk", sans-serif' }}
             >
-              Qalam
+              Quran Kareem
             </span>
           </div>
 
@@ -66,7 +66,7 @@ export default function Footer() {
         {/* Divider */}
         <div className="border-t border-purple-500/10 pt-4">
           <p className="text-center text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Qalam — Quran Kareem Streaming App. Under the authority of MedTechAI Arab Organization.
+            © {new Date().getFullYear()} Quran Kareem — Full Surah Audio & Translations App. Under the authority of MedTechAI Arab Organization.
           </p>
         </div>
       </div>

@@ -1,7 +1,7 @@
 {
-  "name": "Qalam - Quran Kareem",
-  "short_name": "Qalam",
-  "description": "A premium Quran Kareem streaming application with beautiful gapless audio streaming, reading mode, and more.",
+  "name": "Quran Kareem - Full Surah Audio & Translations",
+  "short_name": "Quran Kareem",
+  "description": "A premium Quran streaming application with beautiful gapless audio streaming, reading mode, and more.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0518",
@@ -15,14 +15,8 @@
       "purpose": "any maskable"
     },
     {
-      "src": "/mushaf-logo.jpg",
+      "src": "/logo.jpg",
       "sizes": "512x512",
-      "type": "image/jpeg",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/favicon.jpg",
-      "sizes": "180x180",
       "type": "image/jpeg",
       "purpose": "any maskable"
     }

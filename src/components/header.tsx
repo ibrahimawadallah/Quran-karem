@@ -11,21 +11,21 @@ export default function Header() {
          <div className="max-w-6xl mx-auto px-3 sm:px-4 h-14 flex items-center justify-between">
            {/* Brand */}
            <div className="flex items-center gap-2 min-w-0">
-             <img
-               src="/mushaf-logo.jpg"
-               alt="Qalam Logo"
-               className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
-               loading="eager"
-             />
-             <span
-               className="text-base sm:text-lg font-bold bg-gradient-to-r from-amber-300 to-amber-500 bg-clip-text text-transparent truncate"
-               style={{
-                 fontFamily:
-                   'var(--font-space-grotesk), "Space Grotesk", sans-serif',
-               }}
-             >
-               Qalam
-             </span>
+              <img
+                src="/logo.jpg"
+                alt="Quran Kareem Logo"
+                className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
+                loading="eager"
+              />
+              <span
+                className="text-base sm:text-lg font-bold bg-gradient-to-r from-amber-300 to-amber-500 bg-clip-text text-transparent truncate"
+                style={{
+                  fontFamily:
+                    'var(--font-space-grotesk), "Space Grotesk", sans-serif',
+                }}
+              >
+                Quran Kareem
+              </span>
            </div>
 
            {/* Desktop nav */}
