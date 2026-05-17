@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   ],
   metadataBase: new URL("https://quran.medtechai.net"),
   icons: {
-    icon: "/logo.svg",
+    icon: "/favicon.jpg",
     apple: "/mushaf-logo.jpg",
   },
   manifest: "/manifest.json",
