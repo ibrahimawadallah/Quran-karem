@@ -551,12 +551,13 @@ export default function AudioPlayer() {
      setCurrentAyah(1);
 
      const audio = audioRef.current;
-     if (audio) {
-       audio.src = primaryUrl;
+     const urlToUse = apiAudioUrl || primaryUrl;
+     if (audio && urlToUse) {
+       audio.src = urlToUse;
        audio.load();
        audio.play().catch(() => {});
      }
-   }, [currentSurah, primaryUrl, setAudioError, setIsBuffering, setIsUsingFallback, setCurrentAyah]);
+   }, [currentSurah, apiAudioUrl, primaryUrl, setAudioError, setIsBuffering, setIsUsingFallback, setCurrentAyah]);
 
   if (!isPlayerVisible || !currentSurah) return null;
 

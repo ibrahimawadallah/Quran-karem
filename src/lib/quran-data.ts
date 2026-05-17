@@ -253,20 +253,29 @@ function padSurah(num: number): string {
 
 /**
  * Get the primary audio URL for a full surah.
- * Uses cdn.islamic.network which is reliable.
+ * Uses jsDelivr CDN - fast and reliable.
  */
 export function getSurahAudioUrl(reciterId: string, surahNumber: number): string {
-  const reciter = RECITERS.find((r) => r.id === reciterId);
-  const cleanReciterId = reciterId.replace('ar.', '');
-  return `https://cdn.islamic.network/quran/audio-surah/128/${cleanReciterId}/${surahNumber}.mp3`;
+  const reciterFolderMap: Record<string, string> = {
+    'ar.alafasy': 'MishariAlafasy',
+    'ar.abdulbasitmurattal': 'AbdulBasit/murattal',
+    'ar.abdulbasitmujawwad': 'AbdulBasit/mujawwad',
+    'ar.husary': 'Husary',
+    'ar.saudalshuraim': 'Shuraim',
+    'ar.mahershakhashiro': 'MaherAlMuaiqly',
+  };
+  const folder = reciterFolderMap[reciterId];
+  if (folder) {
+    const padded = surahNumber.toString().padStart(3, '0');
+    return `https://cdn.jsdelivr.net/gh/mfeti/quran-audio@1.0.0/${folder}/${padded}.mp3`;
+  }
+  return '';
 }
 
 /**
  * Get the fallback audio URL for a full surah.
- * Always returns the cdn.islamic.network URL as a backup.
+ * Returns empty string - we use API for audio URLs now.
  */
 export function getFallbackAudioUrl(reciterId: string, surahNumber: number): string {
-  // Remove 'ar.' prefix for CDN compatibility
-  const cleanReciterId = reciterId.replace('ar.', '');
-  return `https://cdn.islamic.network/quran/audio-surah/128/${cleanReciterId}/${surahNumber}.mp3`;
+  return '';
 }
