@@ -1,24 +1,18 @@
 import { NextResponse } from 'next/server';
 
-interface TimingSegment {
-  timestamp: number;
-  duration: number;
-  segment: string;
-}
-
-const RECITER_ID_MAP: Record<string, number> = {
-  'ar.alafasy': 7,
-  'ar.abdulbasitmujawwad': 1,
-  'ar.abdulbasitmurattal': 2,
-  'ar.abdurrahmaansudais': 3,
-  'ar.abubakralshatri': 4,
-  'ar.hanirifai': 5,
-  'ar.husary': 6,
-  'ar.husarymuallim': 12,
-  'ar.minshawi': 9,
-  'ar.minshawimujawwad': 8,
-  'ar.shuraym': 10,
-  'ar.tablawi': 11,
+const RECITER_MAP: Record<string, string> = {
+  '7': 'ar.alafasy',
+  '1': 'ar.abdulbasit',
+  '2': 'ar.abdulbasit',
+  '3': 'ar.sudais',
+  '4': 'ar.shatri',
+  '5': 'ar.hanirifai',
+  '6': 'ar.husary',
+  '12': 'ar.husarymuallim',
+  '9': 'ar.minshawi',
+  '8': 'ar.minshawi',
+  '10': 'ar.shuraym',
+  '11': 'ar.tablawi',
 };
 
 export async function GET(
@@ -30,10 +24,6 @@ export async function GET(
     const surahNumber = parseInt(surahStr, 10);
     const url = new URL(request.url);
     let reciterId = url.searchParams.get('reciter') || '7';
-    
-    if (RECITER_ID_MAP[reciterId]) {
-      reciterId = String(RECITER_ID_MAP[reciterId]);
-    }
 
     if (isNaN(surahNumber) || surahNumber < 1 || surahNumber > 114) {
       return NextResponse.json(
@@ -42,34 +32,66 @@ export async function GET(
       );
     }
 
-    const response = await fetch(
-      `https://api.quran.com/api/v4/recitations/${reciterId}/by_chapter/${surahNumber}`,
+    // Map Quran.com reciter ID to alquran.cloud reciter ID
+    const alquranReciter = RECITER_MAP[reciterId] || 'ar.alafasy';
+
+    // Fetch per-ayah audio URLs from alquran.cloud
+    const res = await fetch(
+      `https://api.alquran.cloud/v1/surah/${surahNumber}/${alquranReciter}`,
       { signal: request.signal }
     );
 
-    if (!response.ok) {
+    if (!res.ok) {
       return NextResponse.json(
-        { error: 'Failed to fetch timing data from API.' },
+        { error: 'Failed to fetch audio data from alquran.cloud' },
         { status: 502 }
       );
     }
 
-    const data = await response.json();
-    
+    const data = await res.json();
+
+    if (data.code !== 200 || !data.data?.ayahs) {
+      return NextResponse.json(
+        { error: 'Invalid response from alquran.cloud' },
+        { status: 502 }
+      );
+    }
+
+    // Get audio duration for each ayah using HEAD requests
+    const ayahs = data.data.ayahs;
     const timings: { timestamp: number; ayahKey: string }[] = [];
-    
-    if (data.audio_files && Array.isArray(data.audio_files)) {
-      for (const audioFile of data.audio_files) {
-        if (audioFile.segments && Array.isArray(audioFile.segments)) {
-          for (const seg of audioFile.segments) {
-            if (Array.isArray(seg) && seg.length >= 3 && seg[0] > 0) {
-              timings.push({
-                timestamp: seg[0],
-                ayahKey: audioFile.verse_key || `${surahNumber}:${seg[2]}`,
-              });
-            }
-          }
+    let cumulativeTime = 0;
+
+    // Fetch durations in parallel (max 10 at a time to avoid rate limiting)
+    const batchSize = 10;
+    for (let i = 0; i < ayahs.length; i += batchSize) {
+      const batch = ayahs.slice(i, i + batchSize);
+      const durationPromises = batch.map(async (ayah: any) => {
+        try {
+          const audioUrl = ayah.audio;
+          // Use HEAD request to get content-length, estimate duration
+          // MP3 at 64kbps: ~8KB per second
+          const headRes = await fetch(audioUrl, {
+            method: 'HEAD',
+            signal: request.signal,
+          });
+          const contentLength = parseInt(
+            headRes.headers.get('content-length') || '0',
+            10
+          );
+          // Estimate duration: contentLength / (64000 / 8) = contentLength / 8000
+          const duration = contentLength / 8000;
+          return { ayahKey: ayah.verse_key || `${surahNumber}:${ayah.numberInSurah}`, duration };
+        } catch {
+          return { ayahKey: ayah.verse_key || `${surahNumber}:${ayah.numberInSurah}`, duration: 0 };
         }
+      });
+
+      const durations = await Promise.all(durationPromises);
+
+      for (const { ayahKey, duration } of durations) {
+        timings.push({ timestamp: Math.round(cumulativeTime * 1000), ayahKey });
+        cumulativeTime += duration;
       }
     }
 

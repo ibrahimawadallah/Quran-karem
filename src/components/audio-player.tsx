@@ -16,10 +16,6 @@ import {
   BookmarkCheck,
 } from "lucide-react";
 import { useAudioStore } from "@/lib/audio-store";
-import {
-  getSurahAudioUrl,
-  getFallbackAudioUrl,
-} from "@/lib/quran-data";
 import { getSurahInfo } from "@/lib/quran-utils";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,7 +27,6 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-/** Audio wave animation bars */
 function AudioWave({ isPlaying }: { isPlaying: boolean }) {
   return (
     <div className="flex items-end gap-[3px] h-4">
@@ -60,10 +55,8 @@ function AudioWave({ isPlaying }: { isPlaying: boolean }) {
 function getCurrentAyahFromTime(currentTime: number, totalAyahs: number, timings: number[]): number {
   if (!timings || timings.length === 0) return 1;
 
-  const bufferedTime = Math.max(0, currentTime - 0.3);
-
   for (let i = timings.length - 1; i >= 0; i--) {
-    if (bufferedTime >= timings[i]) {
+    if (currentTime >= timings[i]) {
       return Math.min(i + 1, totalAyahs);
     }
   }
@@ -76,7 +69,6 @@ export default function AudioPlayer() {
   const preloadAudioRef = useRef<HTMLAudioElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const prevSurahKeyRef = useRef("");
-  const fallbackAttemptedRef = useRef(false);
   const timeRef = useRef(0);
   const durationRef = useRef(0);
   const lastAyahRef = useRef(1);
@@ -97,8 +89,6 @@ export default function AudioPlayer() {
     isBuffering,
     audioError,
     setAudioError,
-    isUsingFallback,
-    setIsUsingFallback,
     currentAyahInSurah,
     setCurrentAyah,
     playbackSpeed,
@@ -108,7 +98,6 @@ export default function AudioPlayer() {
     clearBookmark,
   } = useAudioStore();
 
-  // Touch gesture handlers
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.targetTouches[0].clientX;
   };
@@ -120,20 +109,17 @@ export default function AudioPlayer() {
 
   const handleSwipe = () => {
     const distance = touchStartX.current - touchEndX.current;
-    const minSwipeDistance = 50; // Minimum distance for swipe
+    const minSwipeDistance = 50;
 
     if (Math.abs(distance) > minSwipeDistance) {
       if (distance > 0) {
-        // Swipe left - next surah
         nextSurah();
       } else {
-        // Swipe right - previous surah
         prevSurah();
       }
     }
   };
 
-  // Use state only for re-renders, synced from refs via RAF
   const [displayTime, setDisplayTime] = useState(0);
   const [displayDuration, setDisplayDuration] = useState(0);
   const [volume, setVolume] = useState(0.8);
@@ -143,88 +129,9 @@ export default function AudioPlayer() {
   const [audioSrc, setAudioSrc] = useState('');
   const ayahTimingsRef = useRef<number[]>([]);
 
-  // Unique key for the current surah+reciter combination
   const surahKey = currentSurah
     ? `${currentReciter}-${currentSurah.number}`
     : "";
-
-  // Build the primary audio URL
-  const primaryUrl = currentSurah
-    ? getSurahAudioUrl(currentReciter, currentSurah.number)
-    : "";
-
-  // Build the fallback audio URL
-  const fallbackUrl = currentSurah
-    ? getFallbackAudioUrl(currentReciter, currentSurah.number)
-    : "";
-
-  // RAF loop to sync audio time to display (smooth progress)
-  useEffect(() => {
-    let rafId: number;
-    const tick = () => {
-      const audio = audioRef.current;
-      if (audio) {
-        const ct = audio.currentTime;
-        const dur = audio.duration;
-        if (timeRef.current !== ct) {
-          timeRef.current = ct;
-          setDisplayTime(ct);
-          
-          // Update current ayah based on time
-          if (currentSurah) {
-            const newAyah = getCurrentAyahFromTime(
-              ct,
-              currentSurah.ayahCount,
-              ayahTimingsRef.current
-            );
-            if (newAyah !== lastAyahRef.current) {
-
-              lastAyahRef.current = newAyah;
-              setCurrentAyah(newAyah);
-              setAyahProgress(0); // Reset progress when ayah changes
-            } else {
-              // Calculate progress within current ayah
-              const timings = ayahTimingsRef.current;
-              if (timings.length > newAyah) {
-                const ayahStart = timings[newAyah - 1];
-                const ayahEnd = timings[newAyah] || dur; // Use duration if no next timing
-                const ayahDuration = ayahEnd - ayahStart;
-                if (ayahDuration > 0) {
-                  const progressInAyah = (ct - ayahStart) / ayahDuration;
-                  setAyahProgress(Math.max(0, Math.min(1, progressInAyah)));
-                }
-              }
-            }
-          }
-        }
-        if (isFinite(dur) && durationRef.current !== dur) {
-          durationRef.current = dur;
-          setDisplayDuration(dur);
-        }
-      }
-      rafId = requestAnimationFrame(tick);
-    };
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
-  }, [currentSurah, setCurrentAyah]);
-
-  /** Load and optionally auto-play a URL */
-  const loadAudio = useCallback(
-    (url: string, autoPlay: boolean) => {
-      const audio = audioRef.current;
-      if (!audio || !url) return;
-
-      audio.src = url;
-      audio.load();
-
-      if (autoPlay) {
-        audio.play().catch(() => {
-          // Autoplay may be blocked by browser; user will need to click play
-        });
-      }
-    },
-    []
-  );
 
   // Fetch real ayah timings from API
   useEffect(() => {
@@ -250,7 +157,6 @@ export default function AudioPlayer() {
         const res = await fetch(`/api/timing/${currentSurah.number}?reciter=${quranComReciterId}`);
         const data = await res.json();
         if (data.timings && Array.isArray(data.timings)) {
-          // Convert timestamps (milliseconds) to seconds and extract unique ayah start times
           const timings = data.timings
             .map((t: { timestamp: number; ayahKey: string }) => t.timestamp / 1000)
             .sort((a: number, b: number) => a - b);
@@ -265,13 +171,12 @@ export default function AudioPlayer() {
     fetchTimings();
   }, [currentSurah, currentReciter]);
 
-  // Fetch full surah audio URL directly when surah or reciter changes
+  // Fetch full surah audio URL from Quran.com API
   useEffect(() => {
     if (!currentSurah || !currentReciter) return;
 
     const fetchAudioUrl = async () => {
       try {
-        // Map to Quran.com API reciter IDs
         const reciterMap: Record<string, number> = {
           'ar.alafasy': 7,
           'ar.abdulbasitmujawwad': 1,
@@ -300,23 +205,35 @@ export default function AudioPlayer() {
     fetchAudioUrl();
   }, [currentSurah, currentReciter]);
 
+  const loadAudio = useCallback(
+    (url: string, autoPlay: boolean) => {
+      const audio = audioRef.current;
+      if (!audio || !url) return;
+
+      audio.src = url;
+      audio.load();
+
+      if (autoPlay) {
+        audio.play().catch(() => {});
+      }
+    },
+    []
+  );
+
   // Load new audio when audioSrc changes
   useEffect(() => {
     if (!audioSrc) return;
     if (prevSurahKeyRef.current === surahKey) return;
     prevSurahKeyRef.current = surahKey;
-    fallbackAttemptedRef.current = false;
 
-    // Reset refs
     timeRef.current = 0;
     durationRef.current = 0;
 
     setAudioError(null);
-    setIsUsingFallback(false);
     setIsBuffering(true);
 
     loadAudio(audioSrc, isPlaying);
-  }, [surahKey, audioSrc, isPlaying, loadAudio, setAudioError, setIsUsingFallback, setIsBuffering]);
+  }, [surahKey, audioSrc, isPlaying, loadAudio, setAudioError, setIsBuffering]);
 
   // Play/pause based on store state
   useEffect(() => {
@@ -338,7 +255,6 @@ export default function AudioPlayer() {
     const onCanPlay = () => {
       setIsBuffering(false);
 
-      // Check for bookmark and seek to it
       if (currentSurah && currentReciter) {
         const surahKey = `${currentSurah.number}-${currentReciter}`;
         const bookmarkTime = loadBookmark(surahKey);
@@ -355,37 +271,13 @@ export default function AudioPlayer() {
     };
 
     const onEnded = () => {
-      // Auto-play next surah
       nextSurah();
     };
 
-     const onError = (e: Event) => {
-       const audio = audioRef.current;
-       if (!audio) return;
-
-       setIsBuffering(false);
-
-       console.error('Audio load error:', {
-         currentSrc: audio.currentSrc,
-         error: e,
-         networkState: audio.networkState,
-         readyState: audio.readyState
-       });
-
-       // If primary failed and we haven't tried fallback yet, try fallback
-       if (!fallbackAttemptedRef.current && fallbackUrl && fallbackUrl !== audio.currentSrc) {
-         console.log('Trying fallback URL:', fallbackUrl);
-         fallbackAttemptedRef.current = true;
-         setIsUsingFallback(true);
-         audio.src = fallbackUrl;
-         audio.load();
-         audio.play().catch(() => {});
-         return;
-       }
-
-       // All sources failed — show error
-       setAudioError("Unable to load audio. Please check your internet connection or try a different reciter.");
-     };
+    const onError = () => {
+      setIsBuffering(false);
+      setAudioError("Unable to load audio. Please check your internet connection or try a different reciter.");
+    };
 
     audio.addEventListener("canplay", onCanPlay);
     audio.addEventListener("waiting", onWaiting);
@@ -400,7 +292,7 @@ export default function AudioPlayer() {
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("error", onError);
     };
-  }, [nextSurah, setIsBuffering, setIsPlaying, setAudioError, setIsUsingFallback, fallbackUrl]);
+  }, [nextSurah, setIsBuffering, setIsPlaying, setAudioError, loadBookmark, currentSurah, currentReciter]);
 
   // Apply volume and mute
   useEffect(() => {
@@ -416,6 +308,53 @@ export default function AudioPlayer() {
     audio.playbackRate = playbackSpeed;
   }, [playbackSpeed]);
 
+  // RAF loop to sync audio time to display
+  useEffect(() => {
+    let rafId: number;
+    const tick = () => {
+      const audio = audioRef.current;
+      if (audio) {
+        const ct = audio.currentTime;
+        const dur = audio.duration;
+        if (timeRef.current !== ct) {
+          timeRef.current = ct;
+          setDisplayTime(ct);
+          
+          if (currentSurah) {
+            const newAyah = getCurrentAyahFromTime(
+              ct,
+              currentSurah.ayahCount,
+              ayahTimingsRef.current
+            );
+            if (newAyah !== lastAyahRef.current) {
+              lastAyahRef.current = newAyah;
+              setCurrentAyah(newAyah);
+              setAyahProgress(0);
+            } else {
+              const timings = ayahTimingsRef.current;
+              if (timings.length > newAyah) {
+                const ayahStart = timings[newAyah - 1];
+                const ayahEnd = timings[newAyah] || dur;
+                const ayahDuration = ayahEnd - ayahStart;
+                if (ayahDuration > 0) {
+                  const progressInAyah = (ct - ayahStart) / ayahDuration;
+                  setAyahProgress(Math.max(0, Math.min(1, progressInAyah)));
+                }
+              }
+            }
+          }
+        }
+        if (isFinite(dur) && durationRef.current !== dur) {
+          durationRef.current = dur;
+          setDisplayDuration(dur);
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [currentSurah, setCurrentAyah]);
+
   // Preload next surah
   const preloadNextSurah = useCallback(() => {
     if (!currentSurah || !currentReciter) return;
@@ -427,23 +366,39 @@ export default function AudioPlayer() {
     const preloadAudio = preloadAudioRef.current;
     if (!preloadAudio) return;
 
-    const surahKey = `${nextSurah.number}-${currentReciter}`;
-    const primaryUrl = getSurahAudioUrl(nextSurah.number, currentReciter);
+    const reciterMap: Record<string, number> = {
+      'ar.alafasy': 7,
+      'ar.abdulbasitmujawwad': 1,
+      'ar.abdulbasitmurattal': 2,
+      'ar.husary': 6,
+      'ar.husarymuallim': 12,
+      'ar.saudalshuraim': 10,
+      'ar.minshawi': 9,
+      'ar.minshawimujawwad': 8,
+      'ar.abdurrahmaansudais': 3,
+      'ar.abubakralshatri': 4,
+      'ar.hanirifai': 5,
+      'ar.tablawi': 11,
+    };
+    const quranComReciterId = reciterMap[currentReciter] || 7;
 
-    if (primaryUrl && preloadAudio.src !== primaryUrl) {
-      preloadAudio.src = primaryUrl;
-      preloadAudio.preload = "metadata";
-      preloadAudio.load();
-    }
+    fetch(`https://api.quran.com/api/v4/chapter_recitations/${quranComReciterId}?chapter=${nextSurahNum}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.audio_files?.[0]?.audio_url) {
+          preloadAudio.src = data.audio_files[0].audio_url;
+          preloadAudio.preload = "metadata";
+          preloadAudio.load();
+        }
+      })
+      .catch(() => {});
   }, [currentSurah, currentReciter]);
 
   // Start preloading when surah changes
   useEffect(() => {
     if (isPlaying && currentSurah) {
-      // Preload immediately when starting to play
       preloadNextSurah();
 
-      // Also preload when we're 30 seconds from the end
       const checkPreload = () => {
         const audio = audioRef.current;
         if (!audio || !audio.duration) return;
@@ -454,7 +409,7 @@ export default function AudioPlayer() {
         }
       };
 
-      const interval = setInterval(checkPreload, 5000); // Check every 5 seconds
+      const interval = setInterval(checkPreload, 5000);
       return () => clearInterval(interval);
     }
   }, [isPlaying, currentSurah, preloadNextSurah]);
@@ -554,7 +509,6 @@ export default function AudioPlayer() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isPlayerVisible, currentSurah, togglePlay, hidePlayer]);
 
-  /** Click on progress bar to seek */
   const handleProgressClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       const audio = audioRef.current;
@@ -569,7 +523,6 @@ export default function AudioPlayer() {
     []
   );
 
-  /** Drag on progress bar to seek */
   const handleProgressDrag = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       const audio = audioRef.current;
@@ -584,27 +537,22 @@ export default function AudioPlayer() {
     []
   );
 
-/** Retry loading audio */
-   const handleRetry = useCallback(() => {
-     if (!currentSurah) return;
-     fallbackAttemptedRef.current = false;
-     setAudioError(null);
-     setIsBuffering(true);
-     setIsUsingFallback(false);
-     timeRef.current = 0;
-     durationRef.current = 0;
-     // Reset ayah tracking
-     lastAyahRef.current = 0;
-     setCurrentAyah(1);
+  const handleRetry = useCallback(() => {
+    if (!currentSurah) return;
+    setAudioError(null);
+    setIsBuffering(true);
+    timeRef.current = 0;
+    durationRef.current = 0;
+    lastAyahRef.current = 0;
+    setCurrentAyah(1);
 
-     const audio = audioRef.current;
-     const urlToUse = audioSrc || primaryUrl;
-     if (audio && urlToUse) {
-       audio.src = urlToUse;
-       audio.load();
-       audio.play().catch(() => {});
-     }
-   }, [currentSurah, audioSrc, primaryUrl, setAudioError, setIsBuffering, setIsUsingFallback, setCurrentAyah]);
+    const audio = audioRef.current;
+    if (audio && audioSrc) {
+      audio.src = audioSrc;
+      audio.load();
+      audio.play().catch(() => {});
+    }
+  }, [currentSurah, audioSrc, setAudioError, setIsBuffering, setCurrentAyah]);
 
   if (!isPlayerVisible || !currentSurah) return null;
 
@@ -616,219 +564,202 @@ export default function AudioPlayer() {
       <audio ref={audioRef} preload="auto" />
       <audio ref={preloadAudioRef} preload="none" style={{ display: 'none' }} />
 
-       {/* Fixed bottom bar */}
-       <div
-          className="fixed bottom-0 left-0 right-0 z-50 border-t border-purple-500/20"
-          style={{
-            background: "rgba(10, 5, 24, 0.95)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
+      <div
+        className="fixed bottom-0 left-0 right-0 z-50 border-t border-purple-500/20"
+        style={{
+          background: "rgba(10, 5, 24, 0.95)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div
+          ref={progressRef}
+          className="w-full h-2 cursor-pointer group relative touch-none select-none"
+          onClick={handleProgressClick}
+          onPointerMove={(e) => {
+            if (e.buttons > 0) handleProgressDrag(e);
           }}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
+          onPointerDown={handleProgressDrag}
+          style={{ background: "rgba(139, 92, 246, 0.15)" }}
         >
-         {/* Progress bar (thin, clickable) */}
-         <div
-           ref={progressRef}
-           className="w-full h-2 cursor-pointer group relative touch-none select-none"
-           onClick={handleProgressClick}
-           onPointerMove={(e) => {
-             if (e.buttons > 0) handleProgressDrag(e);
-           }}
-           onPointerDown={handleProgressDrag}
-           style={{ background: "rgba(139, 92, 246, 0.15)" }}
-         >
-           <div
-             className="absolute top-0 left-0 h-full bg-gradient-to-r from-amber-400 to-amber-600 transition-[width] duration-100"
-             style={{ width: `${progressPercent}%` }}
-           />
-           <div
-             className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-amber-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg shadow-amber-400/50 touch-none"
-             style={{ left: `${progressPercent}%`, marginLeft: "-8px" }}
-           />
-         </div>
+          <div
+            className="absolute top-0 left-0 h-full bg-gradient-to-r from-amber-400 to-amber-600 transition-[width] duration-100"
+            style={{ width: `${progressPercent}%` }}
+          />
+          <div
+            className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-amber-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg shadow-amber-400/50 touch-none"
+            style={{ left: `${progressPercent}%`, marginLeft: "-8px" }}
+          />
+        </div>
 
-         {/* Error bar */}
-         {audioError && (
-           <div className="flex items-center justify-center gap-3 px-4 py-2 bg-red-900/30 border-b border-red-500/20">
-             <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-             <span className="text-xs text-red-300">{audioError}</span>
-             <button
-               onClick={handleRetry}
-               className="flex items-center gap-1.5 px-2.5 py-1 bg-red-500/20 text-red-300 rounded-md hover:bg-red-500/30 transition-colors text-xs"
-             >
-               <RefreshCw className="w-3 h-3" />
-               Retry
-             </button>
-           </div>
-         )}
+        {audioError && (
+          <div className="flex items-center justify-center gap-3 px-4 py-2 bg-red-900/30 border-b border-red-500/20">
+            <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+            <span className="text-xs text-red-300">{audioError}</span>
+            <button
+              onClick={handleRetry}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-red-500/20 text-red-300 rounded-md hover:bg-red-500/30 transition-colors text-xs"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Retry
+            </button>
+          </div>
+        )}
 
-         <div className="flex items-center gap-1 sm:gap-3 px-2 sm:px-4 py-2 max-w-screen-xl mx-auto">
-           {/* Left: Surah info + wave */}
-           <div className="flex items-center gap-2 min-w-0 flex-1">
-             <AudioWave isPlaying={isPlaying && !audioError} />
+        <div className="flex items-center gap-1 sm:gap-3 px-2 sm:px-4 py-2 max-w-screen-xl mx-auto">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <AudioWave isPlaying={isPlaying && !audioError} />
 
-             <div className="min-w-0">
-               <div className="flex items-center gap-1.5">
-                 <span className="text-[10px] sm:text-xs text-amber-400 font-medium tabular-nums">
-                   {currentSurah?.number}
-                 </span>
-                 <span className="arabic-name text-sm sm:text-lg text-amber-400 truncate">
-                   {currentSurah?.arabicName}
-                 </span>
-               </div>
-               <div className="flex items-center gap-1.5 text-[9px] sm:text-[11px] text-muted-foreground tabular-nums">
-                 <span className="truncate">{currentSurah?.englishMeaning}</span>
-                 <span className="shrink-0">•</span>
-                 <span className="shrink-0">{currentSurah?.ayahCount} Ayahs</span>
-                 {isUsingFallback && !audioError && (
-                   <span className="text-amber-500/70 shrink-0">&bull; backup</span>
-                 )}
-                 {currentSurah && currentAyahInSurah > 0 && (
-                   <span className="text-amber-400/80 shrink-0">&bull; Ayah {currentAyahInSurah}</span>
-                 )}
-               </div>
-             </div>
-           </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] sm:text-xs text-amber-400 font-medium tabular-nums">
+                  {currentSurah?.number}
+                </span>
+                <span className="arabic-name text-sm sm:text-lg text-amber-400 truncate">
+                  {currentSurah?.arabicName}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 text-[9px] sm:text-[11px] text-muted-foreground tabular-nums">
+                <span className="truncate">{currentSurah?.englishMeaning}</span>
+                <span className="shrink-0">•</span>
+                <span className="shrink-0">{currentSurah?.ayahCount} Ayahs</span>
+                {currentSurah && currentAyahInSurah > 0 && (
+                  <span className="text-amber-400/80 shrink-0">&bull; Ayah {currentAyahInSurah}</span>
+                )}
+              </div>
+            </div>
+          </div>
 
-           {/* Center: Controls */}
-           <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
-             {/* Previous */}
-             <button
-               onClick={prevSurah}
-               className="p-1.5 sm:p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-purple-500/10 active:scale-95 touch-manipulation"
-               aria-label="Previous surah"
-             >
-               <SkipBack className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-             </button>
+          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+            <button
+              onClick={prevSurah}
+              className="p-1.5 sm:p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-purple-500/10 active:scale-95 touch-manipulation"
+              aria-label="Previous surah"
+            >
+              <SkipBack className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </button>
 
-             {/* Play/Pause */}
-             <button
-               onClick={audioError ? handleRetry : togglePlay}
-               className={`p-2 sm:p-2.5 rounded-full transition-all active:scale-95 touch-manipulation ${
-                 isPlaying
-                   ? "bg-amber-500 text-[#0a0518] hover:bg-amber-400 shadow-lg shadow-amber-500/30"
-                   : "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
-               }`}
-               aria-label={audioError ? "Retry" : isPlaying ? "Pause" : "Play"}
-             >
-               {audioError ? (
-                 <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
-               ) : isBuffering ? (
-                 <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-               ) : isPlaying ? (
-                 <Pause className="w-4 h-4 sm:w-5 sm:h-5" />
-               ) : (
-                 <Play className="w-4 h-4 sm:w-5 sm:h-5 ml-0.5" />
-               )}
-             </button>
+            <button
+              onClick={audioError ? handleRetry : togglePlay}
+              className={`p-2 sm:p-2.5 rounded-full transition-all active:scale-95 touch-manipulation ${
+                isPlaying
+                  ? "bg-amber-500 text-[#0a0518] hover:bg-amber-400 shadow-lg shadow-amber-500/30"
+                  : "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
+              }`}
+              aria-label={audioError ? "Retry" : isPlaying ? "Pause" : "Play"}
+            >
+              {audioError ? (
+                <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
+              ) : isBuffering ? (
+                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+              ) : isPlaying ? (
+                <Pause className="w-4 h-4 sm:w-5 sm:h-5" />
+              ) : (
+                <Play className="w-4 h-4 sm:w-5 sm:h-5 ml-0.5" />
+              )}
+            </button>
 
-              {/* Next */}
+            <button
+              onClick={nextSurah}
+              className="p-1.5 sm:p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-purple-500/10 active:scale-95 touch-manipulation"
+              aria-label="Next surah"
+            >
+              <SkipForward className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </button>
+
+            <button
+              onClick={() => {
+                if (!currentSurah || !currentReciter) return;
+                const audio = audioRef.current;
+                if (!audio) return;
+
+                const surahKey = `${currentSurah.number}-${currentReciter}`;
+                if (isBookmarked) {
+                  clearBookmark(surahKey);
+                  setIsBookmarked(false);
+                } else {
+                  saveBookmark(surahKey, audio.currentTime);
+                  setIsBookmarked(true);
+                }
+              }}
+              className={`p-1.5 sm:p-2 transition-colors rounded-full active:scale-95 touch-manipulation ${
+                isBookmarked
+                  ? "text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+                  : "text-muted-foreground hover:text-foreground hover:bg-purple-500/10"
+              }`}
+              aria-label={isBookmarked ? "Remove bookmark" : "Bookmark current position"}
+            >
+              {isBookmarked ? (
+                <BookmarkCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              ) : (
+                <Bookmark className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              )}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <div className="text-[9px] sm:text-[11px] text-muted-foreground tabular-nums shrink-0">
+              {formatTime(displayTime)} / {formatTime(displayDuration)}
+            </div>
+
+            <div className="hidden sm:flex items-center gap-1">
               <button
-                onClick={nextSurah}
-                className="p-1.5 sm:p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-purple-500/10 active:scale-95 touch-manipulation"
-                aria-label="Next surah"
+                onClick={() => setIsMuted(!isMuted)}
+                className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-full hover:bg-white/10"
+                aria-label={isMuted ? "Unmute" : "Mute"}
               >
-                <SkipForward className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              </button>
-
-              {/* Bookmark */}
-              <button
-                onClick={() => {
-                  if (!currentSurah || !currentReciter) return;
-                  const audio = audioRef.current;
-                  if (!audio) return;
-
-                  const surahKey = `${currentSurah.number}-${currentReciter}`;
-                  if (isBookmarked) {
-                    clearBookmark(surahKey);
-                    setIsBookmarked(false);
-                  } else {
-                    saveBookmark(surahKey, audio.currentTime);
-                    setIsBookmarked(true);
-                  }
-                }}
-                className={`p-1.5 sm:p-2 transition-colors rounded-full active:scale-95 touch-manipulation ${
-                  isBookmarked
-                    ? "text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
-                    : "text-muted-foreground hover:text-foreground hover:bg-purple-500/10"
-                }`}
-                aria-label={isBookmarked ? "Remove bookmark" : "Bookmark current position"}
-              >
-                {isBookmarked ? (
-                  <BookmarkCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                {isMuted || volume === 0 ? (
+                  <VolumeX className="w-3.5 h-3.5" />
                 ) : (
-                  <Bookmark className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <Volume2 className="w-3.5 h-3.5" />
                 )}
               </button>
-           </div>
-
-           {/* Right: Time + Volume + Close */}
-           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-             {/* Time display */}
-             <div className="text-[9px] sm:text-[11px] text-muted-foreground tabular-nums shrink-0">
-               {formatTime(displayTime)} / {formatTime(displayDuration)}
-             </div>
-
-             {/* Volume - hidden on very small screens */}
-             <div className="hidden sm:flex items-center gap-1">
-               <button
-                 onClick={() => setIsMuted(!isMuted)}
-                 className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-full hover:bg-white/10"
-                 aria-label={isMuted ? "Unmute" : "Mute"}
-               >
-                 {isMuted || volume === 0 ? (
-                   <VolumeX className="w-3.5 h-3.5" />
-                 ) : (
-                   <Volume2 className="w-3.5 h-3.5" />
-                 )}
-               </button>
-               <div className="w-16">
-                 <Slider
-                   min={0}
-                   max={1}
-                   step={0.01}
-                   value={[isMuted ? 0 : volume]}
-                   onValueChange={(val) => {
-                     setVolume(val[0]);
-                     if (val[0] > 0) setIsMuted(false);
-                   }}
-                   className="cursor-pointer"
-                 />
-               </div>
+              <div className="w-16">
+                <Slider
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={[isMuted ? 0 : volume]}
+                  onValueChange={(val) => {
+                    setVolume(val[0]);
+                    if (val[0] > 0) setIsMuted(false);
+                  }}
+                  className="cursor-pointer"
+                />
               </div>
+            </div>
 
-              {/* Playback Speed */}
-              <div className="hidden sm:flex items-center gap-1">
-                <Select
-                  value={playbackSpeed.toString()}
-                  onValueChange={(value) => setPlaybackSpeed(parseFloat(value))}
-                >
-                  <SelectTrigger className="w-16 h-7 text-[10px] bg-transparent border-purple-500/20 hover:border-purple-500/40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0.5">0.5x</SelectItem>
-                    <SelectItem value="0.75">0.75x</SelectItem>
-                    <SelectItem value="1.0">1x</SelectItem>
-                    <SelectItem value="1.25">1.25x</SelectItem>
-                    <SelectItem value="1.5">1.5x</SelectItem>
-                    <SelectItem value="2.0">2x</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="hidden sm:flex items-center gap-1">
+              <Select
+                value={playbackSpeed.toString()}
+                onValueChange={(value) => setPlaybackSpeed(parseFloat(value))}
+              >
+                <SelectTrigger className="w-16 h-7 text-[10px] bg-transparent border-purple-500/20 hover:border-purple-500/40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0.5">0.5x</SelectItem>
+                  <SelectItem value="0.75">0.75x</SelectItem>
+                  <SelectItem value="1.0">1x</SelectItem>
+                  <SelectItem value="1.25">1.25x</SelectItem>
+                  <SelectItem value="1.5">1.5x</SelectItem>
+                  <SelectItem value="2.0">2x</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-              {/* Close */}
-             <button
-               onClick={hidePlayer}
-               className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-white/10 active:scale-95 touch-manipulation"
-               aria-label="Close player"
-             >
-               <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-             </button>
-           </div>
-         </div>
-       </div>
-     </>
+            <button
+              onClick={hidePlayer}
+              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-white/10 active:scale-95 touch-manipulation"
+              aria-label="Close player"
+            >
+              <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
