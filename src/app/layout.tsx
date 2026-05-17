@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Outfit } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import ErrorBoundary from "@/components/error-boundary";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -90,8 +91,10 @@ export default function RootLayout({
             'var(--font-outfit), "Outfit", system-ui, sans-serif',
         }}
       >
-        {children}
-        <Toaster />
+        <ErrorBoundary>
+          {children}
+          <Toaster />
+        </ErrorBoundary>
         <script
           dangerouslySetInnerHTML={{
             __html: `

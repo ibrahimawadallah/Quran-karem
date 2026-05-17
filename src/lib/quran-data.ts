@@ -253,22 +253,10 @@ function padSurah(num: number): string {
 
 /**
  * Get the primary audio URL for a full surah.
- * Uses mp3quran.net (fast, reliable CDN) when folder is available,
- * falls back to cdn.islamic.network otherwise.
+ * Uses cdn.islamic.network which is reliable.
  */
 export function getSurahAudioUrl(reciterId: string, surahNumber: number): string {
   const reciter = RECITERS.find((r) => r.id === reciterId);
-
-  // Try mp3quran.net first if we have a folder mapping
-  if (reciter?.mp3quranFolder) {
-    // Try multiple servers in case one is down
-    const servers = ['server8', 'server7', 'server10', 'server11', 'server12'];
-    const randomServer = servers[Math.floor(Math.random() * servers.length)];
-    return `https://${randomServer}.mp3quran.net/${reciter.mp3quranFolder}/${padSurah(surahNumber)}.mp3`;
-  }
-
-  // Fallback to cdn.islamic.network
-  // Remove 'ar.' prefix for CDN compatibility
   const cleanReciterId = reciterId.replace('ar.', '');
   return `https://cdn.islamic.network/quran/audio-surah/128/${cleanReciterId}/${surahNumber}.mp3`;
 }

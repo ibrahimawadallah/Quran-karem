@@ -144,6 +144,7 @@ export default function AudioPlayer() {
   const [isMuted, setIsMuted] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [ayahProgress, setAyahProgress] = useState(0);
+  const [apiAudioUrl, setApiAudioUrl] = useState('');
 
   // Unique key for the current surah+reciter combination
   const surahKey = currentSurah
@@ -229,14 +230,31 @@ export default function AudioPlayer() {
     []
   );
 
+  // Fetch audio URL from API when surah or reciter changes
+  useEffect(() => {
+    if (!currentSurah || !currentReciter) return;
+
+    const fetchAudioUrl = async () => {
+      try {
+        const res = await fetch(`/api/audio-url?surah=${currentSurah.number}&reciter=${currentReciter}`);
+        const data = await res.json();
+        if (data.audioUrl) {
+          setApiAudioUrl(data.audioUrl);
+        }
+      } catch (err) {
+        console.error('Failed to fetch audio URL:', err);
+      }
+    };
+
+    fetchAudioUrl();
+  }, [currentSurah, currentReciter]);
+
   // Load new audio when surah or reciter changes
   useEffect(() => {
-    if (!primaryUrl) return;
+    if (!apiAudioUrl && !primaryUrl) return;
     if (prevSurahKeyRef.current === surahKey) return;
     prevSurahKeyRef.current = surahKey;
     fallbackAttemptedRef.current = false;
-
-
 
     // Reset refs
     timeRef.current = 0;
@@ -246,8 +264,12 @@ export default function AudioPlayer() {
     setIsUsingFallback(false);
     setIsBuffering(true);
 
-    loadAudio(primaryUrl, isPlaying);
-  }, [surahKey, primaryUrl, isPlaying, loadAudio, setAudioError, setIsUsingFallback, setIsBuffering, currentReciter, currentSurah]);
+    // Use API URL if available, otherwise fall back to primaryUrl
+    const urlToUse = apiAudioUrl || primaryUrl;
+    if (urlToUse) {
+      loadAudio(urlToUse, isPlaying);
+    }
+  }, [surahKey, apiAudioUrl, primaryUrl, isPlaying, loadAudio, setAudioError, setIsUsingFallback, setIsBuffering, currentReciter, currentSurah]);
 
   // Play/pause based on store state
   useEffect(() => {
