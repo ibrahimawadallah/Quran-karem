@@ -59,7 +59,7 @@ export default function SurahReadingModal() {
   const isViewingPlayingSurah = currentSurah?.number === surahNumber;
   const currentAyah = currentAyahInSurah;
 
-  const fetchSurahText = useCallback(async () => {
+  const fetchSurahText = useCallback(async (signal?: AbortSignal) => {
     if (!surahNumber) return;
 
     if (cacheRef.current.has(surahNumber)) {
@@ -73,39 +73,52 @@ export default function SurahReadingModal() {
     setError(null);
 
     try {
-      const res = await fetch(`/api/surah/${surahNumber}`);
+      const res = await fetch(`/api/surah/${surahNumber}`, { signal });
       if (!res.ok) {
         throw new Error("Failed to fetch surah text");
       }
       const data: SurahText = await res.json();
+      if (signal?.aborted) return;
       cacheRef.current.set(surahNumber, data);
       setSurahText(data);
     } catch (err) {
+      if (signal?.aborted) return;
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, [surahNumber]);
 
   useEffect(() => {
-    if (showSurahModal && surahNumber) {
-      fetchSurahText();
-    }
+    if (!showSurahModal || !surahNumber) return;
+
+    const abortController = new AbortController();
+    fetchSurahText(abortController.signal);
+
+    return () => {
+      abortController.abort();
+    };
   }, [showSurahModal, surahNumber, fetchSurahText]);
 
   useEffect(() => {
     if (!surahNumber || !showTafsir) return;
     
+    const abortController = new AbortController();
+    
     const fetchTafsir = async () => {
       setLoadingTafsir(true);
       try {
         const [arRes, enRes] = await Promise.all([
-          fetch(`/api/tafsir/${surahNumber}?tafsir_slug=ar-muyassar`),
-          fetch(`/api/tafsir/${surahNumber}?tafsir_slug=en-tafisr-ibn-kathir`),
+          fetch(`/api/tafsir/${surahNumber}?tafsir_slug=ar-muyassar`, { signal: abortController.signal }),
+          fetch(`/api/tafsir/${surahNumber}?tafsir_slug=en-tafisr-ibn-kathir`, { signal: abortController.signal }),
         ]);
         
         const arData = await arRes.json();
         const enData = await enRes.json();
+        
+        if (abortController.signal.aborted) return;
         
         const combined: Record<string, TafsirEntry> = {};
         
@@ -129,13 +142,21 @@ export default function SurahReadingModal() {
         
         setTafsirData(combined);
       } catch (err) {
-        console.error('Failed to fetch tafsir:', err);
+        if (!abortController.signal.aborted) {
+          console.error('Failed to fetch tafsir:', err);
+        }
       } finally {
-        setLoadingTafsir(false);
+        if (!abortController.signal.aborted) {
+          setLoadingTafsir(false);
+        }
       }
     };
     
     fetchTafsir();
+    
+    return () => {
+      abortController.abort();
+    };
   }, [surahNumber, showTafsir]);
 
   useEffect(() => {
