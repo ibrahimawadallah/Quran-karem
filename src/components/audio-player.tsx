@@ -137,6 +137,9 @@ export default function AudioPlayer() {
   useEffect(() => {
     if (!currentSurah || !currentReciter) return;
 
+    const abortController = new AbortController();
+    const currentSurahNumber = currentSurah.number;
+
     const fetchTimings = async () => {
       try {
         const reciterMap: Record<string, number> = {
@@ -154,26 +157,37 @@ export default function AudioPlayer() {
           'ar.tablawi': 11,
         };
         const quranComReciterId = reciterMap[currentReciter] || 7;
-        const res = await fetch(`/api/timing/${currentSurah.number}?reciter=${quranComReciterId}`);
+        const res = await fetch(`/api/timing/${currentSurahNumber}?reciter=${quranComReciterId}`, {
+          signal: abortController.signal,
+        });
         const data = await res.json();
-        if (data.timings && Array.isArray(data.timings)) {
+        if (data.timings && Array.isArray(data.timings) && !abortController.signal.aborted) {
           const timings = data.timings
             .map((t: { timestamp: number; ayahKey: string }) => t.timestamp / 1000)
             .sort((a: number, b: number) => a - b);
           ayahTimingsRef.current = timings;
         }
       } catch (err) {
-        console.error('Failed to fetch timing data:', err);
+        if (!abortController.signal.aborted) {
+          console.error('Failed to fetch timing data:', err);
+        }
         ayahTimingsRef.current = [];
       }
     };
 
     fetchTimings();
+
+    return () => {
+      abortController.abort();
+    };
   }, [currentSurah, currentReciter]);
 
   // Fetch full surah audio URL from Quran.com API
   useEffect(() => {
     if (!currentSurah || !currentReciter) return;
+
+    const abortController = new AbortController();
+    const currentSurahNumber = currentSurah.number;
 
     const fetchAudioUrl = async () => {
       try {
@@ -192,17 +206,25 @@ export default function AudioPlayer() {
           'ar.tablawi': 11,
         };
         const quranComReciterId = reciterMap[currentReciter] || 7;
-        const res = await fetch(`https://api.quran.com/api/v4/chapter_recitations/${quranComReciterId}?chapter=${currentSurah.number}`);
+        const res = await fetch(`https://api.quran.com/api/v4/chapter_recitations/${quranComReciterId}?chapter=${currentSurahNumber}`, {
+          signal: abortController.signal,
+        });
         const data = await res.json();
-        if (data.audio_files?.[0]?.audio_url) {
+        if (data.audio_files?.[0]?.audio_url && !abortController.signal.aborted) {
           setAudioSrc(data.audio_files[0].audio_url);
         }
       } catch (err) {
-        console.error('Failed to fetch audio URL:', err);
+        if (!abortController.signal.aborted) {
+          console.error('Failed to fetch audio URL:', err);
+        }
       }
     };
 
     fetchAudioUrl();
+
+    return () => {
+      abortController.abort();
+    };
   }, [currentSurah, currentReciter]);
 
   const loadAudio = useCallback(
