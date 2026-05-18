@@ -55,14 +55,14 @@ export default function InstallPrompt() {
   if (!isVisible) return null;
 
   return (
-    <div className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 z-50 animate-slide-up">
+    <div className="fixed bottom-28 sm:bottom-24 left-3 right-3 sm:left-auto sm:right-4 sm:w-80 z-40 animate-slide-up">
       <div className="bg-gradient-to-br from-purple-900/95 to-amber-900/95 backdrop-blur-xl border border-amber-500/30 rounded-xl shadow-2xl shadow-amber-500/20 p-4">
         <button
           onClick={handleDismiss}
-          className="absolute top-2 right-2 text-gray-400 hover:text-white transition-colors p-1"
+          className="absolute top-2 right-2 text-gray-400 hover:text-white transition-colors p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center"
           aria-label="Dismiss"
         >
-          <X className="w-4 h-4" />
+          <X className="w-5 h-5" />
         </button>
 
         <div className="flex items-start gap-3">
@@ -72,7 +72,7 @@ export default function InstallPrompt() {
             </svg>
           </div>
           
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pr-8">
             <h3 className="text-white font-semibold text-sm mb-1">Install Quran Kareem App</h3>
             
             {isIOS ? (
@@ -89,14 +89,14 @@ export default function InstallPrompt() {
               {!isIOS && (
                 <button
                   onClick={handleInstall}
-                  className="flex-1 bg-amber-500 hover:bg-amber-400 text-[#0a0518] text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors active:scale-95"
+                  className="flex-1 bg-amber-500 hover:bg-amber-400 text-[#0a0518] text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors active:scale-95 min-h-[44px] touch-manipulation"
                 >
                   Install
                 </button>
               )}
               <button
                 onClick={handleDismiss}
-                className="flex-1 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors active:scale-95"
+                className="flex-1 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors active:scale-95 min-h-[44px] touch-manipulation"
               >
                 {isIOS ? 'Close' : 'Later'}
               </button>

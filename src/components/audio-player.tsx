@@ -565,7 +565,7 @@ export default function AudioPlayer() {
       <audio ref={preloadAudioRef} preload="none" style={{ display: 'none' }} />
 
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 border-t border-purple-500/20"
+        className="fixed bottom-0 left-0 right-0 z-50 border-t border-purple-500/20 pb-[env(safe-area-inset-bottom)]"
         style={{
           background: "rgba(10, 5, 24, 0.95)",
           backdropFilter: "blur(20px)",
@@ -576,7 +576,7 @@ export default function AudioPlayer() {
       >
         <div
           ref={progressRef}
-          className="w-full h-2 cursor-pointer group relative touch-none select-none"
+          className="w-full h-3 sm:h-2 cursor-pointer group relative touch-none select-none"
           onClick={handleProgressClick}
           onPointerMove={(e) => {
             if (e.buttons > 0) handleProgressDrag(e);
@@ -589,39 +589,39 @@ export default function AudioPlayer() {
             style={{ width: `${progressPercent}%` }}
           />
           <div
-            className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-amber-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg shadow-amber-400/50 touch-none"
+            className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-amber-400 rounded-full shadow-lg shadow-amber-400/50 touch-none sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity"
             style={{ left: `${progressPercent}%`, marginLeft: "-8px" }}
           />
         </div>
 
         {audioError && (
-          <div className="flex items-center justify-center gap-3 px-4 py-2 bg-red-900/30 border-b border-red-500/20">
+          <div className="flex items-center justify-center gap-3 px-4 py-3 bg-red-900/30 border-b border-red-500/20">
             <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-            <span className="text-xs text-red-300">{audioError}</span>
+            <span className="text-sm text-red-300">{audioError}</span>
             <button
               onClick={handleRetry}
-              className="flex items-center gap-1.5 px-2.5 py-1 bg-red-500/20 text-red-300 rounded-md hover:bg-red-500/30 transition-colors text-xs"
+              className="flex items-center gap-1.5 px-3 py-2 bg-red-500/20 text-red-300 rounded-lg hover:bg-red-500/30 transition-colors text-sm min-h-[44px] touch-manipulation"
             >
-              <RefreshCw className="w-3 h-3" />
+              <RefreshCw className="w-4 h-4" />
               Retry
             </button>
           </div>
         )}
 
-        <div className="flex items-center gap-1 sm:gap-3 px-2 sm:px-4 py-2 max-w-screen-xl mx-auto">
+        <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 max-w-screen-xl mx-auto">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <AudioWave isPlaying={isPlaying && !audioError} />
 
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] sm:text-xs text-amber-400 font-medium tabular-nums">
+                <span className="text-xs sm:text-xs text-amber-400 font-medium tabular-nums">
                   {currentSurah?.number}
                 </span>
                 <span className="arabic-name text-sm sm:text-lg text-amber-400 truncate">
                   {currentSurah?.arabicName}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 text-[9px] sm:text-[11px] text-muted-foreground tabular-nums">
+              <div className="flex items-center gap-1.5 text-xs sm:text-[11px] text-muted-foreground tabular-nums">
                 <span className="truncate">{currentSurah?.englishMeaning}</span>
                 <span className="shrink-0">•</span>
                 <span className="shrink-0">{currentSurah?.ayahCount} Ayahs</span>
@@ -632,18 +632,18 @@ export default function AudioPlayer() {
             </div>
           </div>
 
-          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-1 shrink-0">
             <button
               onClick={prevSurah}
-              className="p-1.5 sm:p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-purple-500/10 active:scale-95 touch-manipulation"
+              className="p-2.5 sm:p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-purple-500/10 active:scale-95 touch-manipulation"
               aria-label="Previous surah"
             >
-              <SkipBack className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <SkipBack className="w-5 h-5 sm:w-4 sm:h-4" />
             </button>
 
             <button
               onClick={audioError ? handleRetry : togglePlay}
-              className={`p-2 sm:p-2.5 rounded-full transition-all active:scale-95 touch-manipulation ${
+              className={`p-3 sm:p-2.5 rounded-full transition-all active:scale-95 touch-manipulation ${
                 isPlaying
                   ? "bg-amber-500 text-[#0a0518] hover:bg-amber-400 shadow-lg shadow-amber-500/30"
                   : "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
@@ -651,22 +651,22 @@ export default function AudioPlayer() {
               aria-label={audioError ? "Retry" : isPlaying ? "Pause" : "Play"}
             >
               {audioError ? (
-                <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
+                <RefreshCw className="w-5 h-5 sm:w-5 sm:h-5" />
               ) : isBuffering ? (
-                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                <Loader2 className="w-5 h-5 sm:w-5 sm:h-5 animate-spin" />
               ) : isPlaying ? (
-                <Pause className="w-4 h-4 sm:w-5 sm:h-5" />
+                <Pause className="w-5 h-5 sm:w-5 sm:h-5" />
               ) : (
-                <Play className="w-4 h-4 sm:w-5 sm:h-5 ml-0.5" />
+                <Play className="w-5 h-5 sm:w-5 sm:h-5 ml-0.5" />
               )}
             </button>
 
             <button
               onClick={nextSurah}
-              className="p-1.5 sm:p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-purple-500/10 active:scale-95 touch-manipulation"
+              className="p-2.5 sm:p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-purple-500/10 active:scale-95 touch-manipulation"
               aria-label="Next surah"
             >
-              <SkipForward className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <SkipForward className="w-5 h-5 sm:w-4 sm:h-4" />
             </button>
 
             <button
@@ -684,7 +684,7 @@ export default function AudioPlayer() {
                   setIsBookmarked(true);
                 }
               }}
-              className={`p-1.5 sm:p-2 transition-colors rounded-full active:scale-95 touch-manipulation ${
+              className={`p-2.5 sm:p-2 transition-colors rounded-full active:scale-95 touch-manipulation ${
                 isBookmarked
                   ? "text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
                   : "text-muted-foreground hover:text-foreground hover:bg-purple-500/10"
@@ -692,15 +692,15 @@ export default function AudioPlayer() {
               aria-label={isBookmarked ? "Remove bookmark" : "Bookmark current position"}
             >
               {isBookmarked ? (
-                <BookmarkCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <BookmarkCheck className="w-5 h-5 sm:w-4 sm:h-4" />
               ) : (
-                <Bookmark className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <Bookmark className="w-5 h-5 sm:w-4 sm:h-4" />
               )}
             </button>
           </div>
 
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            <div className="text-[9px] sm:text-[11px] text-muted-foreground tabular-nums shrink-0">
+          <div className="flex items-center gap-2 sm:gap-2 shrink-0">
+            <div className="text-xs sm:text-[11px] text-muted-foreground tabular-nums shrink-0">
               {formatTime(displayTime)} / {formatTime(displayDuration)}
             </div>
 
@@ -752,10 +752,10 @@ export default function AudioPlayer() {
 
             <button
               onClick={hidePlayer}
-              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-white/10 active:scale-95 touch-manipulation"
+              className="p-2.5 sm:p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-white/10 active:scale-95 touch-manipulation"
               aria-label="Close player"
             >
-              <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <X className="w-5 h-5 sm:w-4 sm:h-4" />
             </button>
           </div>
         </div>
