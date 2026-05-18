@@ -142,29 +142,34 @@ export default function AudioPlayer() {
 
     const fetchTimings = async () => {
       try {
-        const reciterMap: Record<string, number> = {
-          'ar.alafasy': 7,
-          'ar.abdulbasitmujawwad': 1,
-          'ar.abdulbasitmurattal': 2,
-          'ar.husary': 6,
-          'ar.husarymuallim': 12,
-          'ar.saudalshuraim': 10,
-          'ar.minshawi': 9,
-          'ar.minshawimujawwad': 8,
-          'ar.abdurrahmaansudais': 3,
-          'ar.abubakralshatri': 4,
-          'ar.hanirifai': 5,
-          'ar.tablawi': 11,
+        const folderMap: Record<string, string> = {
+          'ar.alafasy': 'afs', 'ar.abdulbasitmurattal': 'basit', 'ar.abdulbasitmujawwad': 'basit_j',
+          'ar.husary': 'husr', 'ar.husarymuallim': 'husr', 'ar.saudalshuraim': 'shur',
+          'ar.minshawi': 'minsh', 'ar.minshawimujawwad': 'minshawimjwd', 'ar.abdurrahmaansudais': 'sds',
+          'ar.abubakralshatri': 'shtr', 'ar.hanirifai': 'rifai', 'ar.tablawi': 'tblawi',
+          'ar.yasseraldossari': 'dosri', 'ar.mahershakhashiro': 'maher', 'ar.muhammadayyub': 'ayyub',
+          'ar.haniarrifai': 'rifai', 'ar.ahmedalajmi': 'ajm', 'ar.mahmoudalialbanna': 'banna',
+          'ar.muhammadanwarshahat': 'shhat', 'ar.mustafaismail': 'sm_ismail', 'ar.aliabdurrahmanalhuthaify': 'hthfi',
+          'ar.abdullahbasfar': 'basfar', 'ar.faresabbad': 'abbad', 'ar.ibrahimalakhdar': 'akdr',
+          'ar.abdullahalmatrood': 'mtrod', 'ar.salahalbudair': 'bdar', 'ar.muhammadalluhaidan': 'lhdn',
+          'ar.ibrahimaldossari': 'dosri', 'ar.nasseralqatami': 'qtmi', 'ar.khaledalqahtani': 'qhtani',
+          'ar.abdulbariaththubaity': 'thbyty',
         };
-        const quranComReciterId = reciterMap[currentReciter] || 7;
-        const res = await fetch(`/api/timing/${currentSurahNumber}?reciter=${quranComReciterId}`, {
-          signal: abortController.signal,
-        });
-        const data = await res.json();
-        if (data.timings && Array.isArray(data.timings) && !abortController.signal.aborted) {
-          const timings = data.timings
-            .map((t: { timestamp: number; ayahKey: string }) => t.timestamp / 1000)
-            .sort((a: number, b: number) => a - b);
+        const folder = folderMap[currentReciter] || 'afs';
+        const padded = currentSurahNumber.toString().padStart(3, '0');
+        const audioUrl = `https://server8.mp3quran.net/${folder}/${padded}.mp3`;
+        const headRes = await fetch(audioUrl, { method: 'HEAD', signal: abortController.signal });
+        const contentLength = parseInt(headRes.headers.get('content-length') || '0', 10);
+        if (contentLength > 0 && !abortController.signal.aborted) {
+          const durationSec = contentLength / 16000;
+          const surahDataRes = await fetch(`/api/surah/${currentSurahNumber}`, { signal: abortController.signal });
+          const surahData = await surahDataRes.json();
+          const ayahCount = surahData?.arabicAyahs?.length || 7;
+          const avgAyahDuration = durationSec / ayahCount;
+          const timings: number[] = [];
+          for (let i = 0; i < ayahCount; i++) {
+            timings.push(i * avgAyahDuration);
+          }
           ayahTimingsRef.current = timings;
         }
       } catch (err) {
@@ -182,7 +187,7 @@ export default function AudioPlayer() {
     };
   }, [currentSurah, currentReciter]);
 
-  // Fetch full surah audio URL from Quran.com API
+  // Fetch full surah audio URL from mp3quran.net (supports all reciters)
   useEffect(() => {
     if (!currentSurah || !currentReciter) return;
 
@@ -191,27 +196,61 @@ export default function AudioPlayer() {
 
     const fetchAudioUrl = async () => {
       try {
-        const reciterMap: Record<string, number> = {
-          'ar.alafasy': 7,
-          'ar.abdulbasitmujawwad': 1,
-          'ar.abdulbasitmurattal': 2,
-          'ar.husary': 6,
-          'ar.husarymuallim': 12,
-          'ar.saudalshuraim': 10,
-          'ar.minshawi': 9,
-          'ar.minshawimujawwad': 8,
-          'ar.abdurrahmaansudais': 3,
-          'ar.abubakralshatri': 4,
-          'ar.hanirifai': 5,
-          'ar.tablawi': 11,
+        // mp3quran.net folder mapping for all reciters
+        const folderMap: Record<string, string> = {
+          'ar.alafasy': 'afs',
+          'ar.abdulbasitmurattal': 'basit',
+          'ar.abdulbasitmujawwad': 'basit_j',
+          'ar.husary': 'husr',
+          'ar.husarymuallim': 'husr',
+          'ar.saudalshuraim': 'shur',
+          'ar.minshawi': 'minsh',
+          'ar.minshawimujawwad': 'minshawimjwd',
+          'ar.abdurrahmaansudais': 'sds',
+          'ar.abubakralshatri': 'shtr',
+          'ar.hanirifai': 'rifai',
+          'ar.tablawi': 'tblawi',
+          'ar.yasseraldossari': 'dosri',
+          'ar.mahershakhashiro': 'maher',
+          'ar.muhammadayyub': 'ayyub',
+          'ar.haniarrifai': 'rifai',
+          'ar.ahmedalajmi': 'ajm',
+          'ar.mahmoudalialbanna': 'banna',
+          'ar.muhammadanwarshahat': 'shhat',
+          'ar.mustafaismail': 'sm_ismail',
+          'ar.aliabdurrahmanalhuthaify': 'hthfi',
+          'ar.abdullahbasfar': 'basfar',
+          'ar.faresabbad': 'abbad',
+          'ar.ibrahimalakhdar': 'akdr',
+          'ar.abdullahalmatrood': 'mtrod',
+          'ar.salahalbudair': 'bdar',
+          'ar.muhammadalluhaidan': 'lhdn',
+          'ar.ibrahimaldossari': 'dosri',
+          'ar.nasseralqatami': 'qtmi',
+          'ar.khaledalqahtani': 'qhtani',
+          'ar.abdulbariaththubaity': 'thbyty',
         };
-        const quranComReciterId = reciterMap[currentReciter] || 7;
-        const res = await fetch(`https://api.quran.com/api/v4/chapter_recitations/${quranComReciterId}?chapter=${currentSurahNumber}`, {
-          signal: abortController.signal,
-        });
-        const data = await res.json();
-        if (data.audio_files?.[0]?.audio_url && !abortController.signal.aborted) {
-          setAudioSrc(data.audio_files[0].audio_url);
+        const folder = folderMap[currentReciter];
+        if (!folder) {
+          // Fallback to Quran.com API
+          const quranComReciterMap: Record<string, number> = {
+            'ar.alafasy': 7, 'ar.abdulbasitmujawwad': 1, 'ar.abdulbasitmurattal': 2,
+            'ar.husary': 6, 'ar.husarymuallim': 12, 'ar.saudalshuraim': 10,
+            'ar.minshawi': 9, 'ar.minshawimujawwad': 8, 'ar.abdurrahmaansudais': 3,
+            'ar.abubakralshatri': 4, 'ar.hanirifai': 5, 'ar.tablawi': 11,
+          };
+          const quranComId = quranComReciterMap[currentReciter] || 7;
+          const res = await fetch(`https://api.quran.com/api/v4/chapter_recitations/${quranComId}?chapter=${currentSurahNumber}`, { signal: abortController.signal });
+          const data = await res.json();
+          if (data.audio_files?.[0]?.audio_url && !abortController.signal.aborted) {
+            setAudioSrc(data.audio_files[0].audio_url);
+          }
+          return;
+        }
+        const padded = currentSurahNumber.toString().padStart(3, '0');
+        const url = `https://server8.mp3quran.net/${folder}/${padded}.mp3`;
+        if (!abortController.signal.aborted) {
+          setAudioSrc(url);
         }
       } catch (err) {
         if (!abortController.signal.aborted) {
@@ -388,32 +427,25 @@ export default function AudioPlayer() {
     const preloadAudio = preloadAudioRef.current;
     if (!preloadAudio) return;
 
-    const reciterMap: Record<string, number> = {
-      'ar.alafasy': 7,
-      'ar.abdulbasitmujawwad': 1,
-      'ar.abdulbasitmurattal': 2,
-      'ar.husary': 6,
-      'ar.husarymuallim': 12,
-      'ar.saudalshuraim': 10,
-      'ar.minshawi': 9,
-      'ar.minshawimujawwad': 8,
-      'ar.abdurrahmaansudais': 3,
-      'ar.abubakralshatri': 4,
-      'ar.hanirifai': 5,
-      'ar.tablawi': 11,
+    const folderMap: Record<string, string> = {
+      'ar.alafasy': 'afs', 'ar.abdulbasitmurattal': 'basit', 'ar.abdulbasitmujawwad': 'basit_j',
+      'ar.husary': 'husr', 'ar.husarymuallim': 'husr', 'ar.saudalshuraim': 'shur',
+      'ar.minshawi': 'minsh', 'ar.minshawimujawwad': 'minshawimjwd', 'ar.abdurrahmaansudais': 'sds',
+      'ar.abubakralshatri': 'shtr', 'ar.hanirifai': 'rifai', 'ar.tablawi': 'tblawi',
+      'ar.yasseraldossari': 'dosri', 'ar.mahershakhashiro': 'maher', 'ar.muhammadayyub': 'ayyub',
+      'ar.haniarrifai': 'rifai', 'ar.ahmedalajmi': 'ajm', 'ar.mahmoudalialbanna': 'banna',
+      'ar.muhammadanwarshahat': 'shhat', 'ar.mustafaismail': 'sm_ismail', 'ar.aliabdurrahmanalhuthaify': 'hthfi',
+      'ar.abdullahbasfar': 'basfar', 'ar.faresabbad': 'abbad', 'ar.ibrahimalakhdar': 'akdr',
+      'ar.abdullahalmatrood': 'mtrod', 'ar.salahalbudair': 'bdar', 'ar.muhammadalluhaidan': 'lhdn',
+      'ar.ibrahimaldossari': 'dosri', 'ar.nasseralqatami': 'qtmi', 'ar.khaledalqahtani': 'qhtani',
+      'ar.abdulbariaththubaity': 'thbyty',
     };
-    const quranComReciterId = reciterMap[currentReciter] || 7;
-
-    fetch(`https://api.quran.com/api/v4/chapter_recitations/${quranComReciterId}?chapter=${nextSurahNum}`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.audio_files?.[0]?.audio_url) {
-          preloadAudio.src = data.audio_files[0].audio_url;
-          preloadAudio.preload = "metadata";
-          preloadAudio.load();
-        }
-      })
-      .catch(() => {});
+    const folder = folderMap[currentReciter] || 'afs';
+    const padded = nextSurahNum.toString().padStart(3, '0');
+    const url = `https://server8.mp3quran.net/${folder}/${padded}.mp3`;
+    preloadAudio.src = url;
+    preloadAudio.preload = "metadata";
+    preloadAudio.load();
   }, [currentSurah, currentReciter]);
 
   // Start preloading when surah changes
