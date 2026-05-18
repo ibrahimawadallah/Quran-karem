@@ -51,8 +51,8 @@ export default function FilterBar() {
               onClick={() => setRevelationFilter(filter.value)}
               className={
                 revelationFilter === filter.value
-                  ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30 gap-1 h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3'
-                  : 'border-purple-500/20 bg-transparent text-muted-foreground hover:bg-purple-500/10 hover:text-purple-200 gap-1 h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3'
+                  ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30 gap-1 h-9 sm:h-9 text-xs sm:text-sm px-2 sm:px-3 min-w-[44px] touch-manipulation active:scale-95'
+                  : 'border-purple-500/20 bg-transparent text-muted-foreground hover:bg-purple-500/10 hover:text-purple-200 gap-1 h-9 sm:h-9 text-xs sm:text-sm px-2 sm:px-3 min-w-[44px] touch-manipulation active:scale-95'
               }
             >
               <span className="hidden xs:inline">{filter.label}</span>
@@ -76,26 +76,26 @@ export default function FilterBar() {
           <Button
             variant="ghost"
             size="icon"
-            className={`h-7 w-7 sm:h-8 sm:w-8 rounded-md ${
+            className={`h-9 w-9 sm:h-8 sm:w-8 rounded-md touch-manipulation active:scale-95 ${
               viewMode === 'list'
                 ? 'bg-amber-500/20 text-amber-400'
                 : 'text-muted-foreground hover:text-purple-200'
             }`}
             onClick={() => setViewMode('list')}
           >
-            <List className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <List className="w-4 h-4 sm:w-4 sm:h-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className={`h-7 w-7 sm:h-8 sm:w-8 rounded-md ${
+            className={`h-9 w-9 sm:h-8 sm:w-8 rounded-md touch-manipulation active:scale-95 ${
               viewMode === 'grid'
                 ? 'bg-amber-500/20 text-amber-400'
                 : 'text-muted-foreground hover:text-purple-200'
             }`}
             onClick={() => setViewMode('grid')}
           >
-            <LayoutGrid className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <LayoutGrid className="w-4 h-4 sm:w-4 sm:h-4" />
           </Button>
         </div>
       </div>
