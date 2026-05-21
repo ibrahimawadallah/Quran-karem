@@ -95,7 +95,7 @@ interface AudioState {
 const loadBookmarks = (): Record<string, number> => {
   if (typeof window === 'undefined') return {};
   try {
-    const stored = localStorage.getItem('qalam-bookmarks');
+    const stored = localStorage.getItem('quran-kareem-bookmarks');
     return stored ? JSON.parse(stored) : {};
   } catch {
     return {};
@@ -118,7 +118,7 @@ const applyTheme = (theme: 'light' | 'dark' | 'system') => {
 const loadTheme = (): 'light' | 'dark' | 'system' => {
   if (typeof window === 'undefined') return 'system';
   try {
-    const stored = localStorage.getItem('qalam-theme');
+    const stored = localStorage.getItem('quran-kareem-theme');
     return (stored as 'light' | 'dark' | 'system') || 'system';
   } catch {
     return 'system';
@@ -129,7 +129,7 @@ const loadTheme = (): 'light' | 'dark' | 'system' => {
 const loadRecentlyPlayed = (): number[] => {
   if (typeof window === 'undefined') return [];
   try {
-    const stored = localStorage.getItem('qalam-recently-played');
+    const stored = localStorage.getItem('quran-kareem-recently-played');
     return stored ? JSON.parse(stored) : [];
   } catch {
     return [];
@@ -249,7 +249,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
       // Persist to localStorage
       if (typeof window !== 'undefined') {
-        localStorage.setItem('qalam-bookmarks', JSON.stringify(bookmarks));
+        localStorage.setItem('quran-kareem-bookmarks', JSON.stringify(bookmarks));
       }
     },
 
@@ -265,7 +265,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
       // Persist to localStorage
       if (typeof window !== 'undefined') {
-        localStorage.setItem('qalam-bookmarks', JSON.stringify(bookmarks));
+        localStorage.setItem('quran-kareem-bookmarks', JSON.stringify(bookmarks));
       }
     },
 
@@ -274,7 +274,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
       // Persist to localStorage
       if (typeof window !== 'undefined') {
-        localStorage.setItem('qalam-theme', theme);
+        localStorage.setItem('quran-kareem-theme', theme);
       }
 
       // Apply theme immediately
@@ -296,7 +296,7 @@ export const useAudioStore = create<AudioState>((set, get) => {
 
       // Persist to localStorage
       if (typeof window !== 'undefined') {
-        localStorage.setItem('qalam-recently-played', JSON.stringify(trimmed));
+        localStorage.setItem('quran-kareem-recently-played', JSON.stringify(trimmed));
       }
     },
 

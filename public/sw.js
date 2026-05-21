@@ -1,6 +1,6 @@
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open('qalam-v1').then((cache) => {
+    caches.open('quran-kareem-v1').then((cache) => {
       return cache.addAll([
         '/',
         '/manifest.json',
@@ -18,7 +18,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== 'qalam-v1') {
+          if (cacheName !== 'quran-kareem-v1') {
             return caches.delete(cacheName);
           }
         })
@@ -56,7 +56,7 @@ self.addEventListener('fetch', (event) => {
         // Clone the response
         const responseToCache = response.clone();
 
-        caches.open('qalam-v1').then((cache) => {
+        caches.open('quran-kareem-v1').then((cache) => {
           cache.put(event.request, responseToCache);
         });
 

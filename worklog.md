@@ -1,7 +1,7 @@
 ---
 Task ID: 1
 Agent: Main
-Task: Rebuild Qalam audio system - full surah streaming with reliable sources
+Task: Rebuild Quran Kareem audio system - full surah streaming with reliable sources
 
 Work Log:
 - Read all current project files (audio-store, audio-player, quran-data, quran-types, page.tsx, etc.)

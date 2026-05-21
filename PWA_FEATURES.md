@@ -1,14 +1,14 @@
-# Qalam - Progressive Web App (PWA) Features
+# Quran Kareem - Progressive Web App (PWA) Features
 
 ## Overview
-Qalam has been enhanced with full Progressive Web App capabilities, making it installable on Chrome and other modern browsers, with improved mobile responsiveness.
+Quran Kareem has been enhanced with full Progressive Web App capabilities, making it installable on Chrome and other modern browsers, with improved mobile responsiveness.
 
 ## PWA Features
 
 ### 1. Installable Web App
 - **Web App Manifest** (`public/manifest.json`)
-  - App name: "Qalam - Quran Kareem"
-  - Short name: "Qalam"
+  - App name: "Quran Kareem"
+  - Short name: "Quran Kareem"
   - Start URL: `/`
   - Display mode: `standalone` (looks like a native app)
   - Orientation: `portrait-primary`
@@ -90,9 +90,9 @@ When users visit the site in Chrome or Edge:
 ## Installation Instructions
 
 ### For Users (Chrome/Edge)
-1. Visit https://qalam3.vercel.app
+1. Visit https://quran-kareem.vercel.app (Replace with your actual Vercel URL)
 2. Look for install prompt (or click three-dot menu)
-3. Select "Install Qalam" or "Install app"
+3. Select "Install Quran Kareem" or "Install app"
 4. App appears in home screen/app launcher
 5. Launch like a native app
 

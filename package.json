@@ -1,11 +1,11 @@
 {
-  "name": "qalam",
+  "name": "quran-kareem",
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000 2>&1 | tee dev.log",
-    "build": "npx next build --webpack && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
-    "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
+    "dev": "next dev -p 3000",
+    "build": "npx next build --webpack && powershell -Command \"Copy-Item -Recurse .next/static .next/standalone/.next/; Copy-Item -Recurse public .next/standalone/\"",
+    "start": "NODE_ENV=production bun .next/standalone/server.js",
     "lint": "eslint .",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
