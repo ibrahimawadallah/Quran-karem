@@ -324,7 +324,8 @@ export default function AudioPlayer() {
             );
             if (newAyah !== lastAyahRef.current) {
               lastAyahRef.current = newAyah;
-              setCurrentAyah(newAyah);
+              //     // Removed per-ayah tracking logic
+    // setCurrentAyah(newAyah); // disabled per‑ayah tracking
               setAyahProgress(0);
             } else {
               const timings = ayahTimingsRef.current;
